@@ -43,7 +43,7 @@ export default function Home() {
             />
             Deploy now
             </Link>
-          <Link href={'/skillsearch'}>
+          <Link href={'/login'}>
             Read our docs
             </Link>
         </div>
