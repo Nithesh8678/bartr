@@ -83,7 +83,11 @@ export default function CreateProfilePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!user) return;
+    if (!user) {
+      console.error("User not found, cannot submit profile.");
+      alert("Authentication error. Please log in again.");
+      return;
+    }
 
     setIsLoading(true);
 
@@ -99,8 +103,9 @@ export default function CreateProfilePage() {
         neededSkills: skillsNeeded,
       };
 
-      // Call the consolidated API endpoint
-      const response = await fetch("/api/profile", {
+      // Call the /api/saveProfile endpoint
+      console.log("Sending data to /api/saveProfile:", profileData);
+      const response = await fetch("/api/saveProfile", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -109,6 +114,7 @@ export default function CreateProfilePage() {
       });
 
       const responseData = await response.json();
+      console.log("Received response from /api/saveProfile:", responseData);
 
       if (!response.ok) {
         console.error("API response error:", responseData);
@@ -118,12 +124,12 @@ export default function CreateProfilePage() {
         );
       }
 
-      // Display success message (maybe use a toast notification library later)
+      // Display success message and redirect to /browse
       console.log("Profile saved successfully:", responseData.message);
-      alert("Profile saved successfully!"); // Simple alert for now
-      router.push("/profile");
+      alert("Profile saved successfully! Redirecting..."); // Simple alert for now
+      router.push("/browse"); // <-- Changed redirect destination
     } catch (error) {
-      console.error("Error saving profile:", error);
+      console.error("Error submitting profile:", error);
       // Display the error message from the API or a generic one
       if (error instanceof Error) {
         alert(`Error: ${error.message}`);
