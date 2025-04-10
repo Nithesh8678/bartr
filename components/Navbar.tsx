@@ -10,6 +10,8 @@ const navItems = [
   { name: "Dashboard", href: "/Dashboard" },
   { name: "Profile", href: "/profile" },
   { name: "Skill Search", href: "/skillsearch" },
+  { name: "Incoming Requests", href: "/incoming-requests" },
+  { name: "Pending Requests", href: "/pending-requests" },
 ];
 
 export function Navbar() {
