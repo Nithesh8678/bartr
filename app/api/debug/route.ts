@@ -51,29 +51,6 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Check user_skills table
-    try {
-      const { data: userSkillsData, error: userSkillsError } = await supabase
-        .from("user_skills")
-        .select("*")
-        .limit(5);
-
-      result.tables.user_skills = {
-        exists: !userSkillsError,
-        error: userSkillsError,
-        schema:
-          userSkillsData && userSkillsData.length > 0
-            ? Object.keys(userSkillsData[0])
-            : [],
-        sample: userSkillsData,
-      };
-    } catch (error) {
-      result.errors.push({
-        source: "user_skills_check",
-        error: String(error),
-      });
-    }
-
     // Check swipes table
     try {
       const { data: swipesData, error: swipesError } = await supabase
@@ -84,7 +61,8 @@ export async function GET(request: NextRequest) {
       result.tables.swipes = {
         exists: !swipesError,
         error: swipesError,
-        schema: swipesData && swipesData.length > 0 ? Object.keys(swipesData[0]) : [],
+        schema:
+          swipesData && swipesData.length > 0 ? Object.keys(swipesData[0]) : [],
         sample: swipesData,
       };
     } catch (error) {
@@ -104,7 +82,10 @@ export async function GET(request: NextRequest) {
       result.tables.matches = {
         exists: !matchesError,
         error: matchesError,
-        schema: matchesData && matchesData.length > 0 ? Object.keys(matchesData[0]) : [],
+        schema:
+          matchesData && matchesData.length > 0
+            ? Object.keys(matchesData[0])
+            : [],
         sample: matchesData,
       };
     } catch (error) {
@@ -115,7 +96,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Get the authenticated user's ID
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
     if (!authError && user) {
       // Check all swipes involving the current user
       const { data: userSwipes, error: userSwipesError } = await supabase
@@ -125,7 +109,7 @@ export async function GET(request: NextRequest) {
 
       result.userSwipes = {
         data: userSwipes,
-        error: userSwipesError
+        error: userSwipesError,
       };
     }
 

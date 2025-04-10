@@ -12,20 +12,14 @@ export interface User {
   unsuccessful_tasks?: number;
   created_at?: string;
   last_active_at?: string;
+  skills?: string[]; // Skills the user can offer
+  skillsRequired?: string[]; // Skills the user is looking for
 }
 
 export interface Skill {
   id: string;
   name: string;
   category?: string;
-}
-
-export interface UserSkill {
-  id: string;
-  user_id: string;
-  skill_id: string;
-  skill_level?: number;
-  is_offering: boolean; // true if offering, false if seeking
 }
 
 export interface Task {

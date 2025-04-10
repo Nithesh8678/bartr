@@ -90,18 +90,18 @@ export async function POST(request: NextRequest) {
 
     // --- 2. Fetch Current User's Needed Skills ---
     console.log(`Fetching needed skills for user ${user.id}...`);
-    const { data: neededSkillsData, error: neededSkillsError } = await supabase
-      .from("user_skills")
-      .select("skills!inner( id, name )")
-      .eq("user_id", user.id)
-      .eq("is_offering", false);
+    const { data: currentUserData, error: currentUserError } = await supabase
+      .from("users")
+      .select("id, skillsRequired")
+      .eq("id", user.id)
+      .single();
 
-    if (neededSkillsError) {
-      console.error("Error fetching needed skills:", neededSkillsError);
+    if (currentUserError) {
+      console.error("Error fetching current user:", currentUserError);
       return NextResponse.json(
         {
           error: "Failed to fetch user needs",
-          details: neededSkillsError.message,
+          details: currentUserError.message,
         },
         { status: 500 }
       );
@@ -109,8 +109,7 @@ export async function POST(request: NextRequest) {
 
     const currentUser: NeedingUser = {
       id: user.id,
-      skillsNeeded:
-        neededSkillsData?.map((s: any) => s.skills).filter(Boolean) || [],
+      skillsNeeded: currentUserData.skillsRequired || [],
     };
     console.log(
       `User ${user.id} needs:`,
@@ -131,14 +130,10 @@ export async function POST(request: NextRequest) {
           id,
           name,
           bio,
-          user_skills!inner (
-            is_offering,
-            skills!inner ( id, name )
-          )
+          skills
         `
       )
-      .neq("id", user.id)
-      .eq("user_skills.is_offering", true);
+      .neq("id", user.id);
 
     if (providersError) {
       console.error("Error fetching providers:", providersError);
@@ -151,30 +146,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Process provider data to group skills per user
-    const providersMap = new Map<string, PotentialProvider>();
-    providersData?.forEach((profile: any) => {
-      const userId = profile.id;
-      if (!providersMap.has(userId)) {
-        providersMap.set(userId, {
+    // Process provider data
+    const potentialProviders: PotentialProvider[] =
+      providersData
+        ?.map((profile: any) => ({
           id: profile.id,
           name: profile.name,
           bio: profile.bio,
-          skillsOffered: [],
-        });
-      }
-      const userEntry = providersMap.get(userId)!;
-      profile.user_skills?.forEach((us: any) => {
-        if (us.skills) {
-          if (!userEntry.skillsOffered.some((s) => s.id === us.skills.id)) {
-            userEntry.skillsOffered.push(us.skills);
-          }
-        }
-      });
-    });
-    const potentialProviders: PotentialProvider[] = Array.from(
-      providersMap.values()
-    ).filter((p) => p.skillsOffered.length > 0);
+          skillsOffered: profile.skills || [],
+        }))
+        .filter((p) => p.skillsOffered.length > 0) || [];
 
     console.log(`Found ${potentialProviders.length} potential providers.`);
 
