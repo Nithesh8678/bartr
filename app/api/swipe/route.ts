@@ -49,19 +49,28 @@ export async function POST(request: NextRequest) {
 
     console.log(`Processing swipe: ${swiperId} ${direction}s ${swipedUserId}`);
 
-    // --- Log the data being inserted ---
-    const swipePayload = {
-      swiper_id: swiperId,
-      swiped_user_id: swipedUserId,
-      direction: direction, // Log the exact value
-    };
-    console.log("[DEBUG] Inserting swipe payload:", swipePayload);
-    // --- End Logging ---
+    // First, check if this swipe already exists
+    const { data: existingSwipe, error: checkExistingError } = await supabase
+      .from("swipes")
+      .select("*")
+      .eq("swiper_id", swiperId)
+      .eq("swiped_user_id", swipedUserId)
+      .maybeSingle();
+
+    console.log("Existing swipe check:", { existingSwipe, checkExistingError });
 
     // 3. Insert Swipe Record
-    const { error: insertSwipeError } = await supabase
+    const { data: insertedSwipe, error: insertSwipeError } = await supabase
       .from("swipes")
-      .insert(swipePayload); // Use the logged payload
+      .insert({
+        swiper_id: swiperId,
+        swiped_user_id: swipedUserId,
+        direction: direction,
+      })
+      .select()
+      .single();
+
+    console.log("Swipe insertion result:", { insertedSwipe, insertSwipeError });
 
     // Handle potential duplicate swipe error gracefully (e.g., user swiped already)
     if (insertSwipeError && insertSwipeError.code !== "23505") {
@@ -76,8 +85,31 @@ export async function POST(request: NextRequest) {
       console.log(
         `Duplicate swipe attempt ignored: ${swiperId} on ${swipedUserId}`
       );
-      // Optionally, update the existing swipe's timestamp or direction if needed
+      // If it's a duplicate, try to update the direction if it's different
+      if (existingSwipe && existingSwipe.direction !== direction) {
+        console.log(
+          `Updating existing swipe direction from ${existingSwipe.direction} to ${direction}`
+        );
+        const { error: updateError } = await supabase
+          .from("swipes")
+          .update({ direction: direction })
+          .eq("id", existingSwipe.id);
+
+        if (updateError) {
+          console.error("Error updating swipe direction:", updateError);
+        }
+      }
     }
+
+    // Verify the swipe was recorded
+    const { data: verifiedSwipe, error: verifyError } = await supabase
+      .from("swipes")
+      .select("*")
+      .eq("swiper_id", swiperId)
+      .eq("swiped_user_id", swipedUserId)
+      .single();
+
+    console.log("Verified swipe record:", { verifiedSwipe, verifyError });
 
     // 4. Check for Mutual Like (Match) - Only if the current swipe is a 'like'
     let matchCreated = false;
@@ -86,21 +118,88 @@ export async function POST(request: NextRequest) {
         `Checking for mutual like: Does user ${swipedUserId} have a 'like' swipe for user ${swiperId}?`
       );
 
-      // Explicitly define query parameters
-      const queryParams = {
-        other_user_id: swipedUserId,
-        current_user_id: swiperId,
-        swipe_direction: "like",
-      };
-      console.log("Reverse swipe query params:", queryParams);
+      // First, check if we can see any swipes at all
+      const { data: testSwipes, error: testError } = await supabase
+        .from("swipes")
+        .select("*")
+        .limit(5);
 
+      console.log("Test query - can we see any swipes?", {
+        testSwipes,
+        testError,
+      });
+
+      // Check all swipes from the swiped user
+      const { data: allSwipesFromUser, error: allSwipesError } = await supabase
+        .from("swipes")
+        .select("*")
+        .eq("swiper_id", swipedUserId);
+
+      console.log("All swipes from swiped user:", {
+        swipes: allSwipesFromUser,
+        error: allSwipesError,
+        query: `swiper_id = ${swipedUserId}`,
+      });
+
+      // Check all swipes to the current user
+      const { data: allSwipesToUser, error: allSwipesToUserError } =
+        await supabase
+          .from("swipes")
+          .select("*")
+          .eq("swiped_user_id", swiperId);
+
+      console.log("All swipes to current user:", {
+        swipes: allSwipesToUser,
+        error: allSwipesToUserError,
+        query: `swiped_user_id = ${swiperId}`,
+      });
+
+      // Try a different query approach for the reverse swipe
+      const { data: reverseSwipeAlt, error: checkMatchErrorAlt } =
+        await supabase
+          .from("swipes")
+          .select("*")
+          .or(
+            `and(swiper_id.eq.${swipedUserId},swiped_user_id.eq.${swiperId},direction.eq.like)`
+          )
+          .maybeSingle();
+
+      console.log("Alternative reverse swipe check:", {
+        reverseSwipe: reverseSwipeAlt,
+        error: checkMatchErrorAlt,
+        query: `swiper_id = ${swipedUserId} AND swiped_user_id = ${swiperId} AND direction = 'like'`,
+      });
+
+      // Original reverse swipe check
       const { data: reverseSwipe, error: checkMatchError } = await supabase
         .from("swipes")
-        .select("id") // Selecting 'id' is enough
-        .eq("swiper_id", queryParams.other_user_id)
-        .eq("swiped_user_id", queryParams.current_user_id)
-        .eq("direction", queryParams.swipe_direction)
+        .select("*")
+        .eq("swiper_id", swipedUserId)
+        .eq("swiped_user_id", swiperId)
+        .eq("direction", "like")
         .maybeSingle();
+
+      console.log("Original reverse swipe check:", {
+        reverseSwipe,
+        checkMatchError,
+        query: {
+          swiper_id: swipedUserId,
+          swiped_user_id: swiperId,
+          direction: "like",
+        },
+      });
+
+      // If we still can't find it, try a raw query
+      const { data: rawQueryResult, error: rawQueryError } = await supabase.rpc(
+        "get_swipe",
+        {
+          p_swiper_id: swipedUserId,
+          p_swiped_user_id: swiperId,
+          p_direction: "like",
+        }
+      );
+
+      console.log("Raw query result:", { rawQueryResult, rawQueryError });
 
       // --- Enhanced Logging ---
       if (checkMatchError) {
@@ -146,6 +245,32 @@ export async function POST(request: NextRequest) {
           }
         } else {
           console.log("[DEBUG] No reverse 'like' swipe found in database.");
+          // --- Add More Detailed Logging ---
+          console.log("[DEBUG] Checking database for potential issues:");
+          const { data: allSwipes, error: allSwipesError } = await supabase
+            .from("swipes")
+            .select("*")
+            .eq("swiper_id", swipedUserId)
+            .eq("swiped_user_id", swiperId);
+
+          if (allSwipesError) {
+            console.error(
+              "[DEBUG] Error fetching all swipes:",
+              JSON.stringify(allSwipesError)
+            );
+          } else {
+            console.log("[DEBUG] All swipes between these users:", allSwipes);
+            if (allSwipes.length === 0) {
+              console.log(
+                "[DEBUG] No swipes found at all between these users."
+              );
+            } else {
+              console.log(
+                "[DEBUG] Found swipes, but none with direction='like'."
+              );
+            }
+          }
+          // --- End More Detailed Logging ---
         }
       }
       // --- End Enhanced Logging ---
