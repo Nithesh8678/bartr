@@ -1,4 +1,6 @@
 -- Drop existing tables if they exist
+DROP TABLE IF EXISTS matches;
+DROP TABLE IF EXISTS swipes;
 DROP TABLE IF EXISTS user_skills;
 DROP TABLE IF EXISTS skills;
 DROP TABLE IF EXISTS users;
@@ -36,10 +38,36 @@ CREATE TABLE user_skills (
   UNIQUE(user_id, skill_id, is_offering)
 );
 
+-- Create swipes table
+CREATE TABLE swipes (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  swiper_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  swiped_user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  direction TEXT CHECK (direction IN ('like', 'skip')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(swiper_id, swiped_user_id) -- Prevent duplicate swipes by the same user on the same profile
+);
+
+-- Create matches table
+CREATE TABLE matches (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user1_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  user2_id UUID REFERENCES users(id) ON DELETE CASCADE,
+  -- Optional: Add task_id if matches are task-specific
+  -- task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
+  status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  -- Ensure user1_id < user2_id to prevent duplicate matches in reverse order
+  CHECK (user1_id < user2_id),
+  UNIQUE(user1_id, user2_id)
+);
+
 -- Enable Row Level Security
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE skills ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_skills ENABLE ROW LEVEL SECURITY;
+ALTER TABLE swipes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
 
 -- Create policies for users table
 CREATE POLICY "Users can view any user profile" 
@@ -79,6 +107,26 @@ CREATE POLICY "Users can update their own user_skills"
 CREATE POLICY "Users can delete their own user_skills" 
   ON user_skills FOR DELETE 
   USING (auth.uid() = user_id);
+
+-- Policies for swipes table
+CREATE POLICY "Users can insert their own swipes" 
+  ON swipes FOR INSERT 
+  WITH CHECK (auth.uid() = swiper_id);
+
+CREATE POLICY "Users can view their own swipes" 
+  ON swipes FOR SELECT 
+  USING (auth.uid() = swiper_id);
+  
+-- Policies for matches table
+CREATE POLICY "Users can view matches they are part of" 
+  ON matches FOR SELECT 
+  USING (auth.uid() = user1_id OR auth.uid() = user2_id);
+
+-- Users generally shouldn't insert matches directly, it should happen via triggers or functions
+-- But for simplicity in the API route, we might allow it with strict checks
+CREATE POLICY "Authenticated users can insert matches (if logic handled in API/function)" 
+  ON matches FOR INSERT 
+  WITH CHECK (auth.role() = 'authenticated');
 
 -- Add some sample skills
 INSERT INTO skills (name, category) VALUES 
