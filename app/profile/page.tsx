@@ -9,22 +9,46 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function ProfilePage() {
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const supabase = createClient();
 
   useEffect(() => {
     const getUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        router.push("/login");
-        return;
+      setIsLoading(true);
+      try {
+        const {
+          data: { user },
+        } = await supabase.auth.getUser();
+        if (!user) {
+          router.push("/login");
+          return;
+        }
+        setUser(user);
+
+        // Get user profile if it exists
+        const { data: userProfile } = await supabase
+          .from("users")
+          .select("*")
+          .eq("id", user.id)
+          .single();
+
+        if (userProfile) {
+          setProfile(userProfile);
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setUser(user);
     };
 
     getUser();
@@ -35,8 +59,12 @@ export default function ProfilePage() {
     router.push("/login");
   };
 
-  if (!user) {
-    return <div>Loading...</div>;
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -44,14 +72,48 @@ export default function ProfilePage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle className="text-2xl">Profile</CardTitle>
-          <CardDescription>Your Google account details</CardDescription>
+          <CardDescription>
+            {profile
+              ? "Your Bartr profile"
+              : "Complete your profile to get started"}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div>
-              <h3 className="font-medium">Name</h3>
-              <p className="text-muted-foreground">{user.user_metadata?.full_name || "Not available"}</p>
-            </div>
+            {profile ? (
+              <>
+                <div>
+                  <h3 className="font-medium">Name</h3>
+                  <p className="text-muted-foreground">{profile.name}</p>
+                </div>
+                {profile.bio && (
+                  <div>
+                    <h3 className="font-medium">Bio</h3>
+                    <p className="text-muted-foreground">{profile.bio}</p>
+                  </div>
+                )}
+                {profile.location && (
+                  <div>
+                    <h3 className="font-medium">Location</h3>
+                    <p className="text-muted-foreground">{profile.location}</p>
+                  </div>
+                )}
+                {profile.timezone && (
+                  <div>
+                    <h3 className="font-medium">Timezone</h3>
+                    <p className="text-muted-foreground">{profile.timezone}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4">
+                <p className="mb-4">You haven't completed your profile yet.</p>
+                <Link href="/profile/create">
+                  <Button>Create Profile</Button>
+                </Link>
+              </div>
+            )}
+
             <div>
               <h3 className="font-medium">Email</h3>
               <p className="text-muted-foreground">{user.email}</p>
@@ -62,16 +124,21 @@ export default function ProfilePage() {
                 {new Date(user.created_at).toLocaleDateString()}
               </p>
             </div>
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleSignOut}
-            >
-              Sign Out
-            </Button>
           </div>
         </CardContent>
+        <CardFooter className="flex flex-col gap-2">
+          {profile && (
+            <Link href="/profile/create" className="w-full">
+              <Button variant="outline" className="w-full">
+                Edit Profile
+              </Button>
+            </Link>
+          )}
+          <Button variant="outline" className="w-full" onClick={handleSignOut}>
+            Sign Out
+          </Button>
+        </CardFooter>
       </Card>
     </div>
   );
-} 
+}
