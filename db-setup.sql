@@ -113,20 +113,31 @@ CREATE POLICY "Users can insert their own swipes"
   ON swipes FOR INSERT 
   WITH CHECK (auth.uid() = swiper_id);
 
-CREATE POLICY "Users can view their own swipes" 
+-- Allow users to SELECT swipes needed to check for matches (the other user's like on them)
+-- Or SELECT their own past swipes (optional, could be useful)
+CREATE POLICY "Users can view relevant swipes for matching" 
   ON swipes FOR SELECT 
-  USING (auth.uid() = swiper_id);
+  USING (
+    -- Allow seeing swipes *made by others* ON the current user
+    swiped_user_id = auth.uid() 
+    OR
+    -- Allow seeing swipes *made by* the current user
+    swiper_id = auth.uid()
+  );
   
 -- Policies for matches table
 CREATE POLICY "Users can view matches they are part of" 
   ON matches FOR SELECT 
   USING (auth.uid() = user1_id OR auth.uid() = user2_id);
 
--- Users generally shouldn't insert matches directly, it should happen via triggers or functions
--- But for simplicity in the API route, we might allow it with strict checks
-CREATE POLICY "Authenticated users can insert matches (if logic handled in API/function)" 
+-- Allow authenticated users to insert matches *if* they are one of the participants
+-- This check is primarily handled by API logic, but belt-and-suspenders approach
+CREATE POLICY "Authenticated users can insert matches they participate in" 
   ON matches FOR INSERT 
-  WITH CHECK (auth.role() = 'authenticated');
+  WITH CHECK (auth.role() = 'authenticated' AND (auth.uid() = user1_id OR auth.uid() = user2_id));
+
+-- Drop the previous potentially less specific insert policy
+DROP POLICY IF EXISTS "Authenticated users can insert matches (if logic handled in API/function)" ON matches;
 
 -- Add some sample skills
 INSERT INTO skills (name, category) VALUES 
@@ -137,4 +148,7 @@ INSERT INTO skills (name, category) VALUES
 ('Marketing', 'Business'),
 ('Content Writing', 'Communication'),
 ('Data Analysis', 'Data'),
-('Photography', 'Creative'); 
+('Photography', 'Creative');
+
+-- Drop the old restrictive select policy if it exists
+DROP POLICY IF EXISTS "Users can view their own swipes" ON swipes; 

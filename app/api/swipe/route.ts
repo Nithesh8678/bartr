@@ -49,12 +49,19 @@ export async function POST(request: NextRequest) {
 
     console.log(`Processing swipe: ${swiperId} ${direction}s ${swipedUserId}`);
 
-    // 3. Insert Swipe Record
-    const { error: insertSwipeError } = await supabase.from("swipes").insert({
+    // --- Log the data being inserted ---
+    const swipePayload = {
       swiper_id: swiperId,
       swiped_user_id: swipedUserId,
-      direction: direction,
-    });
+      direction: direction, // Log the exact value
+    };
+    console.log("[DEBUG] Inserting swipe payload:", swipePayload);
+    // --- End Logging ---
+
+    // 3. Insert Swipe Record
+    const { error: insertSwipeError } = await supabase
+      .from("swipes")
+      .insert(swipePayload); // Use the logged payload
 
     // Handle potential duplicate swipe error gracefully (e.g., user swiped already)
     if (insertSwipeError && insertSwipeError.code !== "23505") {
@@ -76,49 +83,72 @@ export async function POST(request: NextRequest) {
     let matchCreated = false;
     if (direction === "like") {
       console.log(
-        `Checking for mutual like from ${swipedUserId} to ${swiperId}...`
+        `Checking for mutual like: Does user ${swipedUserId} have a 'like' swipe for user ${swiperId}?`
       );
+
+      // Explicitly define query parameters
+      const queryParams = {
+        other_user_id: swipedUserId,
+        current_user_id: swiperId,
+        swipe_direction: "like",
+      };
+      console.log("Reverse swipe query params:", queryParams);
+
       const { data: reverseSwipe, error: checkMatchError } = await supabase
         .from("swipes")
-        .select("id")
-        .eq("swiper_id", swipedUserId) // The other user
-        .eq("swiped_user_id", swiperId) // Swiped on the current user
-        .eq("direction", "like") // And it was a 'like'
-        .maybeSingle(); // Use maybeSingle as there might be 0 or 1
+        .select("id") // Selecting 'id' is enough
+        .eq("swiper_id", queryParams.other_user_id)
+        .eq("swiped_user_id", queryParams.current_user_id)
+        .eq("direction", queryParams.swipe_direction)
+        .maybeSingle();
 
+      // --- Enhanced Logging ---
       if (checkMatchError) {
-        console.error("Error checking for mutual like:", checkMatchError);
-        // Decide if this should be a hard error or just log it
-        // For now, we proceed without creating a match if check fails
-      } else if (reverseSwipe) {
-        // --- MATCH FOUND! ---
-        console.log(
-          `Mutual like detected between ${swiperId} and ${swipedUserId}!`
+        console.error(
+          "[DEBUG] Error checking for mutual like:",
+          JSON.stringify(checkMatchError)
         );
-        matchCreated = true;
-
-        // Ensure consistent order for user1_id and user2_id
-        const user1 = swiperId < swipedUserId ? swiperId : swipedUserId;
-        const user2 = swiperId > swipedUserId ? swiperId : swipedUserId;
-
-        const { error: insertMatchError } = await supabase
-          .from("matches")
-          .insert({ user1_id: user1, user2_id: user2 });
-
-        if (insertMatchError && insertMatchError.code !== "23505") {
-          // Ignore duplicate match error
-          console.error("Error inserting match:", insertMatchError);
-          // Decide how critical this is. Maybe the match exists.
-          // For robustness, you might query if the match exists before inserting.
-        } else if (insertMatchError && insertMatchError.code === "23505") {
-          console.log(`Match already exists between ${user1} and ${user2}.`);
-          // Match already exists, which is fine.
-        } else {
+        // Log the error but proceed (as before), match won't be created
+      } else {
+        console.log("[DEBUG] Result of reverse swipe query:", reverseSwipe);
+        if (reverseSwipe) {
+          // --- MATCH FOUND! ---
           console.log(
-            `Match created successfully between ${user1} and ${user2}.`
+            `[DEBUG] Mutual like detected! Reverse swipe ID: ${reverseSwipe.id}. Proceeding to create match.`
           );
+          matchCreated = true;
+
+          // Ensure consistent order for user1_id and user2_id
+          const user1 = swiperId < swipedUserId ? swiperId : swipedUserId;
+          const user2 = swiperId > swipedUserId ? swiperId : swipedUserId;
+
+          console.log(
+            `[DEBUG] Attempting to insert match: User1=${user1}, User2=${user2}`
+          );
+          const { error: insertMatchError } = await supabase
+            .from("matches")
+            .insert({ user1_id: user1, user2_id: user2 });
+
+          if (insertMatchError && insertMatchError.code !== "23505") {
+            console.error(
+              "[DEBUG] Error inserting match:",
+              JSON.stringify(insertMatchError)
+            );
+            // Keep matchCreated = true because the logic implies a match exists
+          } else if (insertMatchError && insertMatchError.code === "23505") {
+            console.log(
+              `[DEBUG] Match already exists between ${user1} and ${user2}.`
+            );
+          } else if (!insertMatchError) {
+            console.log(
+              `[DEBUG] Match created successfully between ${user1} and ${user2}.`
+            );
+          }
+        } else {
+          console.log("[DEBUG] No reverse 'like' swipe found in database.");
         }
       }
+      // --- End Enhanced Logging ---
     }
 
     // 5. Return Success Response (including whether a match was made)
