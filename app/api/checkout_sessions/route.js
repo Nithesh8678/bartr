@@ -29,10 +29,10 @@ export async function POST(request) {
       ],
       mode: "payment",
       metadata: {
-        credits: credits || "",
+        amount: amount.toString(),
       },
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/credits-store?canceled=true`,
+      cancel_url: `${origin}/?canceled=true`,
     });
 
     return NextResponse.json({ url: session.url });
