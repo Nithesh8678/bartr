@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/app/utils/supabase/client";
+import { useRouter } from "next/navigation";
 
 interface Request {
   id: string;
@@ -9,6 +10,7 @@ interface Request {
   receiver_id: string;
   status: string;
   sender_email: string;
+  match_id?: string; // Add match_id to track matches
 }
 
 interface IncomingRequestsClientProps {
@@ -21,13 +23,15 @@ export default function IncomingRequestsClient({
   const [requests, setRequests] = useState<Request[]>(initialRequests);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    const supabase = createClient();
+    fetchRequests();
 
-    // Subscribe to changes in pending_requests table
+    // Set up real-time subscription for updates
+    const supabase = createClient();
     const subscription = supabase
-      .channel("pending_requests_changes")
+      .channel("public:pending_requests")
       .on(
         "postgres_changes",
         {
@@ -35,15 +39,16 @@ export default function IncomingRequestsClient({
           schema: "public",
           table: "pending_requests",
         },
-        async (payload) => {
-          // Refresh the requests list when changes occur
-          await fetchRequests();
+        () => {
+          // Refetch requests when changes occur
+          fetchRequests();
         }
       )
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      // Clean up subscription
+      supabase.removeChannel(subscription);
     };
   }, []);
 
@@ -67,12 +72,12 @@ export default function IncomingRequestsClient({
 
       const userId = authData.user.id;
 
-      // Fetch the pending requests
+      // Fetch all requests (both pending and accepted)
       const { data: requestsData, error: requestsError } = await supabase
         .from("pending_requests")
         .select("id, sender_id, receiver_id, status")
         .eq("receiver_id", userId)
-        .eq("status", "pending");
+        .or("status.eq.pending,status.eq.accepted");
 
       if (requestsError) {
         console.error("Error fetching requests:", requestsError);
@@ -82,6 +87,41 @@ export default function IncomingRequestsClient({
       if (!requestsData || requestsData.length === 0) {
         setRequests([]);
         return;
+      }
+
+      // Get all accepted requests to fetch their match IDs
+      const acceptedRequestIds = requestsData
+        .filter((req) => req.status === "accepted")
+        .map((req) => req.id);
+
+      // Create a map to store match IDs for requests
+      const matchIdMap = new Map();
+
+      if (acceptedRequestIds.length > 0) {
+        // Fetch matches for the accepted requests
+        const { data: matchesData, error: matchesError } = await supabase
+          .from("matches")
+          .select("id, user1_id, user2_id")
+          .or(`user1_id.eq.${userId},user2_id.eq.${userId}`);
+
+        if (!matchesError && matchesData) {
+          // For each accepted request, find the corresponding match
+          for (const request of requestsData.filter(
+            (req) => req.status === "accepted"
+          )) {
+            const match = matchesData.find(
+              (match) =>
+                (match.user1_id === userId &&
+                  match.user2_id === request.sender_id) ||
+                (match.user1_id === request.sender_id &&
+                  match.user2_id === userId)
+            );
+
+            if (match) {
+              matchIdMap.set(request.id, match.id);
+            }
+          }
+        }
       }
 
       // Fetch the sender emails
@@ -110,6 +150,7 @@ export default function IncomingRequestsClient({
         receiver_id: request.receiver_id,
         status: request.status,
         sender_email: userEmailMap.get(request.sender_id) || "Unknown",
+        match_id: matchIdMap.get(request.id), // Add match ID if it exists
       }));
 
       setRequests(combinedData);
@@ -143,11 +184,37 @@ export default function IncomingRequestsClient({
         throw transactionError;
       }
 
+      // Fetch the created match to get its ID
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .select("id")
+        .or(`user1_id.eq.${senderId},user2_id.eq.${senderId}`)
+        .or(`user1_id.eq.${receiverId},user2_id.eq.${receiverId}`)
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (matchError) {
+        console.error("Error fetching match:", matchError);
+      } else if (matchData && matchData.length > 0) {
+        // Update our local state to show the Chat button instead
+        setRequests((prevRequests) =>
+          prevRequests.map((request) =>
+            request.id === requestId
+              ? { ...request, status: "accepted", match_id: matchData[0].id }
+              : request
+          )
+        );
+      }
+
       alert("Request accepted successfully!");
     } catch (err) {
       console.error("Error accepting request:", err);
       alert("Failed to accept request. Please try again.");
     }
+  };
+
+  const navigateToChat = (matchId: string) => {
+    router.push(`/chat/${matchId}`);
   };
 
   if (loading) {
@@ -174,21 +241,32 @@ export default function IncomingRequestsClient({
               <div>
                 <p className="font-medium">From: {request.sender_email}</p>
                 <p className="text-sm text-gray-500">
-                  Request ID: {request.id}
+                  Status:{" "}
+                  {request.status === "accepted" ? "Accepted" : "Pending"}
                 </p>
               </div>
-              <button
-                onClick={() =>
-                  handleAccept(
-                    request.id,
-                    request.sender_id,
-                    request.receiver_id
-                  )
-                }
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
-              >
-                Accept
-              </button>
+
+              {request.status === "accepted" && request.match_id ? (
+                <button
+                  onClick={() => navigateToChat(request.match_id!)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                >
+                  Chat
+                </button>
+              ) : (
+                <button
+                  onClick={() =>
+                    handleAccept(
+                      request.id,
+                      request.sender_id,
+                      request.receiver_id
+                    )
+                  }
+                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+                >
+                  Accept
+                </button>
+              )}
             </div>
           ))}
         </div>

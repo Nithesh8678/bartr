@@ -15,8 +15,8 @@ interface Message {
   id: string;
   match_id: string;
   sender_id: string;
-  content: string;
-  created_at: string;
+  message: string;
+  timestamp: string;
 }
 
 // Define structure for the other user in the chat
@@ -117,7 +117,7 @@ export default function ChatPage() {
           .from("messages")
           .select("*")
           .eq("match_id", matchId)
-          .order("created_at", { ascending: true });
+          .order("timestamp", { ascending: true });
 
         if (messagesError)
           throw new Error(`Failed to fetch messages: ${messagesError.message}`);
@@ -213,7 +213,7 @@ export default function ChatPage() {
     const messagePayload = {
       match_id: matchId,
       sender_id: currentUser.id,
-      content: messageContent,
+      message: messageContent,
     };
 
     console.log("Sending message:", messagePayload);
@@ -300,10 +300,10 @@ export default function ChatPage() {
                   : "bg-white text-gray-800 border border-gray-200"
               }`}
             >
-              <p className="text-sm break-words">{message.content}</p>
+              <p className="text-sm break-words">{message.message}</p>
               {/* Optional: Add timestamp - consider locale formatting */}
               {/* <p className={`text-xs mt-1 ${message.sender_id === currentUser?.id ? 'text-blue-100 opacity-80' : 'text-gray-400'} text-right`}>
-                 {new Date(message.created_at).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                 {new Date(message.timestamp).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                </p> */}
             </div>
           </div>
