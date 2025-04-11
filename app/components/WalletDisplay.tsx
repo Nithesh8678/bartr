@@ -70,7 +70,7 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Wallet Balance</CardTitle>
+          <CardTitle>Token Balance</CardTitle>
         </CardHeader>
         <CardContent>
           <p>Loading...</p>
@@ -83,7 +83,7 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Wallet Balance</CardTitle>
+          <CardTitle>Token Balance</CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-red-500">Error: {error}</p>
@@ -95,10 +95,12 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Wallet Balance</CardTitle>
+        <CardTitle>Token Balance</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">₹{balance?.toFixed(2) || "0.00"}</p>
+        <p className="text-2xl font-bold">
+          {balance ? Math.floor(balance / 10) : "0.00"}
+        </p>
       </CardContent>
     </Card>
   );

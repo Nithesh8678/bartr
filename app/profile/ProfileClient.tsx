@@ -147,7 +147,7 @@ export default function ProfileClient({
         <Card>
           <CardHeader>
             <CardTitle>Wallet</CardTitle>
-            <CardDescription>Manage your wallet balance</CardDescription>
+            <CardDescription>Manage your token balance</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <WalletDisplay userId={user.id} />

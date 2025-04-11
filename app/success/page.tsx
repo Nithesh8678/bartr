@@ -56,6 +56,36 @@ export default async function Success({
       throw new Error("Failed to update wallet balance");
     }
 
+    // Calculate credits based on payment amount (₹10 = 1 credit)
+    const creditsEarned = Math.floor(amount / 10);
+
+    if (creditsEarned > 0) {
+      // Get current user credits
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", user.id)
+        .single();
+
+      if (userError) {
+        console.error("Error fetching user credits:", userError);
+      } else {
+        // Calculate new credits total (default to 0 if credits is null)
+        const currentCredits = userData?.credits || 0;
+        const newCredits = currentCredits + creditsEarned;
+
+        // Update user credits
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({ credits: newCredits })
+          .eq("id", user.id);
+
+        if (updateError) {
+          console.error("Error updating user credits:", updateError);
+        }
+      }
+    }
+
     return (
       <section
         id="success"
@@ -72,6 +102,11 @@ export default async function Success({
           <p className="text-gray-600 mb-4">
             ₹{amount.toFixed(2)} has been added to your wallet balance.
           </p>
+          {creditsEarned > 0 && (
+            <p className="text-gray-600 mb-4">
+              You've earned {creditsEarned} credits! (₹10 = 1 credit)
+            </p>
+          )}
           <p className="text-sm text-gray-500">
             If you have any questions, please email{" "}
             <a
