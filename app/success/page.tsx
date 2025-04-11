@@ -9,6 +9,7 @@ export default async function Success({
   searchParams: { session_id: string };
 }) {
   const { session_id } = searchParams;
+  const { session_id } = searchParams;
 
   if (!session_id)
     throw new Error("Please provide a valid session_id (`cs_test_...`)");
@@ -26,6 +27,9 @@ export default async function Success({
     customer_details: { email: customerEmail },
     amount_total,
   } = checkoutSession;
+
+  // Get the credits amount from metadata
+  const creditsAmount = metadata?.credits || "0";
 
   if (status === "open") {
     return redirect("/");

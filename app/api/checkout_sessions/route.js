@@ -4,7 +4,7 @@ import { stripe } from "../../../lib/stripe";
 
 export async function POST(request) {
   try {
-    const headersList = await headers();
+    const headersList = headers();
     const origin = headersList.get("origin");
     const { amount } = await request.json();
 
@@ -28,8 +28,11 @@ export async function POST(request) {
         },
       ],
       mode: "payment",
+      metadata: {
+        credits: credits || "",
+      },
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/?canceled=true`,
+      cancel_url: `${origin}/credits-store?canceled=true`,
     });
 
     return NextResponse.json({ url: session.url });
