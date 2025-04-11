@@ -27,6 +27,7 @@ import {
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
+import { awardBarterCompletionCredits } from "@/lib/services/wallet";
 
 interface MatchDetails {
   id: string;
@@ -232,18 +233,114 @@ export default function Dashboard() {
       setConfirmingMatch(matchId);
       const supabase = createClient();
 
-      // Call the confirm_completion function
-      const { data, error } = await supabase.rpc("confirm_completion", {
-        p_match_id: matchId,
-        p_user_id: userId,
-      });
+      // Get the match details to determine user IDs
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .select(
+          "user1_id, user2_id, stake_amount, stake_status_user1, stake_status_user2, project_submitted_user1, project_submitted_user2"
+        )
+        .eq("id", matchId)
+        .single();
 
-      if (error) {
+      if (matchError) {
+        throw matchError;
+      }
+
+      // Check if both users have submitted their projects
+      if (
+        !matchData.project_submitted_user1 ||
+        !matchData.project_submitted_user2
+      ) {
+        throw new Error(
+          "Both users must submit their projects before confirming completion"
+        );
+      }
+
+      // Get current credits for both users
+      const { data: user1Data, error: user1Error } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", matchData.user1_id)
+        .single();
+
+      if (user1Error) {
+        throw user1Error;
+      }
+
+      const { data: user2Data, error: user2Error } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", matchData.user2_id)
+        .single();
+
+      if (user2Error) {
+        throw user2Error;
+      }
+
+      // Refund staked credits to user 1
+      const user1NewCredits = (user1Data.credits || 0) + matchData.stake_amount;
+      const { error: refund1Error } = await supabase
+        .from("users")
+        .update({ credits: user1NewCredits })
+        .eq("id", matchData.user1_id);
+
+      if (refund1Error) {
+        throw refund1Error;
+      }
+
+      // Refund staked credits to user 2
+      const user2NewCredits = (user2Data.credits || 0) + matchData.stake_amount;
+      const { error: refund2Error } = await supabase
+        .from("users")
+        .update({ credits: user2NewCredits })
+        .eq("id", matchData.user2_id);
+
+      if (refund2Error) {
+        throw refund2Error;
+      }
+
+      // Log the refund transactions
+      const { error: log1Error } = await supabase.from("wallets").insert([
+        {
+          user_id: matchData.user1_id,
+          amount: matchData.stake_amount,
+          description: `Refunded stake for completed match ${matchId}`,
+          transaction_type: "refund",
+        },
+      ]);
+
+      const { error: log2Error } = await supabase.from("wallets").insert([
+        {
+          user_id: matchData.user2_id,
+          amount: matchData.stake_amount,
+          description: `Refunded stake for completed match ${matchId}`,
+          transaction_type: "refund",
+        },
+      ]);
+
+      // Mark match as completed
+      const { error: statusError } = await supabase
+        .from("matches")
+        .update({ status: "completed" })
+        .eq("id", matchId);
+
+      if (statusError) {
+        throw statusError;
+      }
+
+      // Award 10 extra credits to both users as reward
+      const { success, error } = await awardBarterCompletionCredits(
+        matchData.user1_id,
+        matchData.user2_id,
+        matchId
+      );
+
+      if (!success) {
         throw error;
       }
 
       toast.success(
-        "Project completion confirmed! Credits have been refunded."
+        "Project completion confirmed! Credits have been refunded and you received 10 extra credits as a reward."
       );
       fetchMatches();
     } catch (err) {
@@ -527,7 +624,8 @@ export default function Dashboard() {
                             </h3>
                             <p className="text-sm text-green-700">
                               Both parties have completed this project. Your
-                              staked credits have been refunded to your account.
+                              staked credits have been refunded to your account
+                              and you received 10 extra credits as a reward.
                             </p>
                           </div>
                         )}

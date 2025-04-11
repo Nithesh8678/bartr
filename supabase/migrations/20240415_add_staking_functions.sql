@@ -50,10 +50,6 @@ BEGIN
   -- Deduct credits from the user
   UPDATE users SET credits = credits - p_stake_amount WHERE id = p_user_id;
   
-  -- Log the transaction in the wallet table
-  INSERT INTO wallets (user_id, amount, description, transaction_type)
-  VALUES (p_user_id, -p_stake_amount, 'Staked credits for match ' || p_match_id, 'stake');
-  
   RETURN TRUE;
 EXCEPTION
   WHEN OTHERS THEN
@@ -141,12 +137,9 @@ BEGIN
   UPDATE users SET credits = credits + v_stake_amount WHERE id = p_user_id;
   UPDATE users SET credits = credits + v_stake_amount WHERE id = v_partner_id;
   
-  -- Log the refund transactions
-  INSERT INTO wallets (user_id, amount, description, transaction_type)
-  VALUES (p_user_id, v_stake_amount, 'Refunded stake for completed match ' || p_match_id, 'refund');
-  
-  INSERT INTO wallets (user_id, amount, description, transaction_type)
-  VALUES (v_partner_id, v_stake_amount, 'Refunded stake for completed match ' || p_match_id, 'refund');
+  -- Add 10 extra credits as reward to both users for completing the barter
+  UPDATE users SET credits = credits + 10 WHERE id = p_user_id;
+  UPDATE users SET credits = credits + 10 WHERE id = v_partner_id;
   
   RETURN TRUE;
 EXCEPTION
@@ -179,17 +172,11 @@ BEGIN
   -- Refund to user1 if they submitted but user2 didn't
   IF v_match.project_submitted_user1 AND NOT v_match.project_submitted_user2 THEN
     UPDATE users SET credits = credits + v_stake_amount WHERE id = v_match.user1_id;
-    
-    INSERT INTO wallets (user_id, amount, description, transaction_type)
-    VALUES (v_match.user1_id, v_stake_amount, 'Refunded stake for expired match ' || p_match_id, 'refund');
   END IF;
   
   -- Refund to user2 if they submitted but user1 didn't
   IF v_match.project_submitted_user2 AND NOT v_match.project_submitted_user1 THEN
     UPDATE users SET credits = credits + v_stake_amount WHERE id = v_match.user2_id;
-    
-    INSERT INTO wallets (user_id, amount, description, transaction_type)
-    VALUES (v_match.user2_id, v_stake_amount, 'Refunded stake for expired match ' || p_match_id, 'refund');
   END IF;
   
   RETURN TRUE;

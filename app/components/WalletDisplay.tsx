@@ -12,7 +12,7 @@ interface WalletDisplayProps {
 
 interface WalletPayload {
   new: {
-    balance: number;
+    credits: number;
   };
 }
 
@@ -55,7 +55,7 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
         },
         (payload: WalletPayload) => {
           if (payload.new) {
-            setBalance(payload.new.balance);
+            setBalance(payload.new.credits);
           }
         }
       )
