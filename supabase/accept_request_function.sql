@@ -27,14 +27,28 @@ BEGIN
     user1_id,
     user2_id,
     status,
-    created_at
+    created_at,
+    project_end_date,
+    stake_status_user1,
+    stake_status_user2,
+    is_chat_enabled,
+    project_submitted_user1,
+    project_submitted_user2,
+    stake_amount
   )
   VALUES (
     -- Ensure user1_id is always less than user2_id to satisfy the check constraint
     LEAST(p_sender_id, p_receiver_id),
     GREATEST(p_sender_id, p_receiver_id),
     'active',
-    NOW()
+    NOW(),
+    NOW() + INTERVAL '7 days',
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    FALSE,
+    10
   );
   
   -- If we get here, both operations succeeded

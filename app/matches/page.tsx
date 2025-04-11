@@ -8,6 +8,14 @@ interface MatchData {
   user2_id: string;
   status: string;
   created_at: string;
+  stake_status_user1: boolean;
+  stake_status_user2: boolean;
+  is_chat_enabled: boolean;
+  project_submitted_user1: boolean;
+  project_submitted_user2: boolean;
+  stake_amount: number;
+  project_end_date: string | null;
+  work_description: string | null;
   partner_email?: string;
   partner_name?: string;
 }
@@ -77,6 +85,14 @@ export default async function MatchesPage() {
       user2_id: match.user2_id,
       status: match.status,
       created_at: match.created_at,
+      stake_status_user1: match.stake_status_user1 || false,
+      stake_status_user2: match.stake_status_user2 || false,
+      is_chat_enabled: match.is_chat_enabled || false,
+      project_submitted_user1: match.project_submitted_user1 || false,
+      project_submitted_user2: match.project_submitted_user2 || false,
+      stake_amount: match.stake_amount || 10,
+      project_end_date: match.project_end_date,
+      work_description: match.work_description,
       partner_email: partnerDetails?.email || "Unknown",
       partner_name: partnerDetails?.name || "Unknown",
     };
