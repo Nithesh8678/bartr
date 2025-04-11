@@ -15,6 +15,7 @@ const navItems = [
   { name: "Home", href: "/" },
   { name: "Profile", href: "/profile" },
   { name: "Skill Search", href: "/skillsearch" },
+  { name: "Dashboard", href: "/Dashboard" },
   { name: "Incoming Requests", href: "/incoming-requests" },
   { name: "Pending Requests", href: "/pending-requests" },
 ];
@@ -39,9 +40,14 @@ export function Navbar() {
       <nav className="w-full max-w-6xl mx-auto border border-border bg-[#2A0EFF] backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-lg shadow-lg">
         <div className="container flex h-12 items-center justify-between p-4 bg-[#2A0EFF] rounded-lg">
           <Link href="/" className="flex items-center space-x-2">
-            <Image src="/assets/bartr. 1.png" alt="Logo" width={60} height={60} />
+            <Image
+              src="/assets/bartr. 1.png"
+              alt="Logo"
+              width={60}
+              height={60}
+            />
           </Link>
-          
+
           <div className="flex items-center space-x-4">
             {user && (
               <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
@@ -51,9 +57,7 @@ export function Navbar() {
                     href={item.href}
                     className={cn(
                       "transition-colors hover:text-foreground/80",
-                      pathname === item.href
-                        ? "text-foreground"
-                        : "text-white"
+                      pathname === item.href ? "text-foreground" : "text-white"
                     )}
                   >
                     {item.name}

@@ -5,11 +5,10 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, ArrowLeft } from "lucide-react";
+import { Loader2, Send, ArrowLeft, ChevronRight } from "lucide-react";
 import { User } from "@supabase/supabase-js"; // Import User type
 import Link from "next/link";
 import { Toaster } from "sonner"; // Import Toaster for potential error messages
-import ProjectSubmission from "./ProjectSubmission";
 
 // Define Message structure
 interface Message {
@@ -251,164 +250,207 @@ export default function ChatPage() {
 
     setIsSending(true);
 
-    const messagePayload = {
-      match_id: matchId,
-      sender_id: currentUser.id,
-      message: messageContent,
-    };
+    try {
+      // Add local timestamp, will be replaced with server timestamp
+      const tempTimestamp = new Date().toISOString();
+      const tempMessageId = `temp-${Date.now()}`;
 
-    console.log("Sending message:", messagePayload);
+      // Optimistically add message to UI
+      const optimisticMessage: Message = {
+        id: tempMessageId,
+        match_id: matchId,
+        sender_id: currentUser.id,
+        message: messageContent,
+        timestamp: tempTimestamp,
+      };
 
-    // Insert the message
-    const { data: insertedMessage, error: insertError } = await supabase
-      .from("messages")
-      .insert(messagePayload)
-      .select() // Select the inserted row to get its ID
-      .single(); // Expecting a single row back
-
-    setIsSending(false);
-
-    if (insertError) {
-      console.error("Error sending message:", insertError);
-      setError("Failed to send message. Please try again.");
-      // Optionally show a toast error here
-    } else {
-      console.log("Message sent successfully and inserted:", insertedMessage);
+      setMessages((prev) => [...prev, optimisticMessage]);
       setNewMessage(""); // Clear input field
-      setError(null); // Clear previous errors
-      // No need to manually add the message here, subscription handles it.
-      // However, sometimes adding it manually *then* letting the subscription potentially
-      // skip the duplicate can feel faster UI-wise. For simplicity, we rely on subscription.
-      scrollToBottom(); // Ensure scroll after sending
+
+      // Send message to database
+      const { data, error } = await supabase.from("messages").insert([
+        {
+          match_id: matchId,
+          sender_id: currentUser.id,
+          message: messageContent,
+        },
+      ]);
+
+      if (error) {
+        throw new Error(`Failed to send message: ${error.message}`);
+      }
+
+      console.log("Message sent successfully");
+    } catch (err) {
+      console.error("Error sending message:", err);
+      setError(err instanceof Error ? err.message : "Failed to send message");
+    } finally {
+      setIsSending(false);
+      scrollToBottom();
     }
   };
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+      <div className="flex h-screen justify-center items-center p-6">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center">
-        <p className="text-red-600 mb-4">{error}</p>
-        <Link href="/browse">
-          <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
-          </Button>
+      <div className="max-w-md mx-auto mt-20 p-6 bg-red-50 rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold text-red-700 mb-2">Error</h2>
+        <p className="text-red-600">{error}</p>
+        <Link
+          href="/matches"
+          className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Matches
         </Link>
       </div>
     );
   }
 
-  // Check if chat is enabled (both users have staked)
-  const isChatEnabled = matchData?.is_chat_enabled || false;
+  if (!matchData || !chatPartner) {
+    return (
+      <div className="max-w-md mx-auto mt-20 p-6 bg-yellow-50 rounded-lg shadow-md">
+        <h2 className="text-lg font-semibold text-yellow-700 mb-2">
+          Chat Not Available
+        </h2>
+        <p className="text-yellow-600">
+          The requested chat could not be loaded. It may have been removed or
+          you don't have access.
+        </p>
+        <Link
+          href="/matches"
+          className="mt-4 inline-flex items-center text-blue-600 hover:text-blue-800"
+        >
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Back to Matches
+        </Link>
+      </div>
+    );
+  }
+
+  const isUser1 = currentUser?.id === matchData.user1_id;
+  const isChatEnabled = matchData.is_chat_enabled;
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50 pt-20 pb-4 w-full px-16 border border-gray-300 shadow-md">
-      <Toaster position="top-center" richColors />
-
-      {/* Chat Header */}
-      <header className="sticky top-0 z-10 flex items-center p-3 border-b bg-white shadow-sm">
+    <div className="max-w-4xl mx-auto p-4 mt-12">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center">
+          <Link
+            href="/matches"
+            className="text-gray-600 hover:text-gray-900 mr-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Link>
+          <h1 className="text-xl font-semibold">
+            Chat with {chatPartner.name}
+          </h1>
+        </div>
         <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => router.back()}
-          className="mr-2"
+          onClick={() => router.push("/Dashboard")}
+          variant="outline"
+          className="flex items-center gap-1"
         >
-          <ArrowLeft className="h-5 w-5" color="black" />
+          View Project Dashboard <ChevronRight className="h-4 w-4" />
         </Button>
-        <h1 className="flex-1 text-lg font-semibold text-center truncate text-black">
-          Chat with {chatPartner?.name || "User"}
-        </h1>
-        <div className="w-10"></div> {/* Spacer to balance back button */}
-      </header>
+      </div>
 
-      {/* Project Submission Section - Only show if chat is enabled */}
-      {isChatEnabled && <ProjectSubmission matchId={matchId} />}
-
-      {/* Chat Disabled Notice */}
-      {!isChatEnabled && (
-        <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-md m-4 text-center">
-          <p className="text-sm text-yellow-800 font-medium mb-2">
-            Chat is currently disabled
-          </p>
-          <p className="text-xs text-yellow-700">
-            Both users must stake credits before you can chat. Return to matches
-            to stake your credits.
+      {!isChatEnabled ? (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center">
+          <h2 className="text-lg font-medium text-yellow-800 mb-2">
+            Chat not yet available
+          </h2>
+          <p className="text-yellow-700 mb-4">
+            Both users need to stake credits to enable chat.
           </p>
           <Button
             onClick={() => router.push("/matches")}
             variant="outline"
-            className="mt-3 text-xs border-yellow-300 text-yellow-800 hover:bg-yellow-100"
+            className="mx-auto"
           >
-            Go to Matches
+            Back to Matches
           </Button>
         </div>
-      )}
-
-      {/* Message List - Only show if chat is enabled */}
-      {isChatEnabled && (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3 border border-gray-300 mt-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${
-                message.sender_id === currentUser?.id
-                  ? "justify-end"
-                  : "justify-start"
-              }`}
-            >
-              <div
-                className={`max-w-[75%] rounded-lg px-3 py-2 shadow-sm ${
-                  message.sender_id === currentUser?.id
-                    ? "bg-blue-500 text-white"
-                    : "bg-white text-gray-800 border border-gray-200"
-                }`}
-              >
-                <p className="text-sm break-words">{message.message}</p>
+      ) : (
+        <>
+          {/* Chat Messages */}
+          <div className="bg-white border border-gray-200 rounded-lg p-4 h-[60vh] overflow-y-auto">
+            {messages.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <p>No messages yet</p>
+                <p className="text-sm mt-1">Start the conversation!</p>
               </div>
-            </div>
-          ))}
-          {messages.length === 0 && (
-            <p className="text-center text-gray-500 text-sm pt-10">
-              No messages yet. Start the conversation!
-            </p>
-          )}
-          <div ref={messagesEndRef} style={{ height: "1px" }} />
-        </div>
-      )}
-
-      {/* Message Input Form - Only show if chat is enabled */}
-      {isChatEnabled && (
-        <form
-          onSubmit={handleSendMessage}
-          className="sticky bottom-0 flex items-center gap-2 p-3 border-2 border-gray-300"
-        >
-          <Input
-            type="text"
-            placeholder="Type your message..."
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            className="flex-1 bg-white border border-gray-300 text-black"
-            disabled={isSending}
-            autoComplete="off"
-          />
-          <Button
-            type="submit"
-            disabled={!newMessage.trim() || isSending}
-            size="icon"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <div className="space-y-3">
+                {messages.map((message) => {
+                  const isCurrentUser = message.sender_id === currentUser?.id;
+                  return (
+                    <div
+                      key={message.id}
+                      className={`flex ${
+                        isCurrentUser ? "justify-end" : "justify-start"
+                      }`}
+                    >
+                      <div
+                        className={`max-w-[70%] px-4 py-2 rounded-lg ${
+                          isCurrentUser
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        <p>{message.message}</p>
+                        <p
+                          className={`text-xs mt-1 ${
+                            isCurrentUser ? "text-blue-100" : "text-gray-500"
+                          }`}
+                        >
+                          {new Date(message.timestamp).toLocaleString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={messagesEndRef} />
+              </div>
             )}
-          </Button>
-        </form>
+          </div>
+
+          {/* Message Input */}
+          <form
+            onSubmit={handleSendMessage}
+            className="mt-4 flex items-center gap-2"
+          >
+            <Input
+              type="text"
+              placeholder="Type your message..."
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              className="flex-grow"
+              disabled={isSending}
+            />
+            <Button
+              type="submit"
+              disabled={!newMessage.trim() || isSending}
+              className={isSending ? "opacity-70" : ""}
+            >
+              {isSending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              <span className="ml-1">Send</span>
+            </Button>
+          </form>
+        </>
       )}
     </div>
   );
