@@ -210,6 +210,30 @@ export default function Dashboard() {
         p_submission_content: workContents[matchId],
       });
 
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .select("stake_amount")
+        .eq("id", matchId)
+        .single();
+
+      const { data: userCredits, error: userCreditsError } = await supabase
+        .from("users")
+        .select("credits")
+        .eq("id", userId)
+        .single();
+
+      if (userCreditsError) {
+        throw userCreditsError;
+      }
+
+      const userNewCredits =
+        userCredits.credits + (matchData?.stake_amount - 1);
+
+      const { error: updateCreditsError } = await supabase
+        .from("users")
+        .update({ credits: userNewCredits })
+        .eq("id", userId);
+
       if (error) {
         throw error;
       }
@@ -227,6 +251,7 @@ export default function Dashboard() {
   };
 
   const handleConfirmCompletion = async (matchId: string) => {
+    alert("hi");
     if (!userId) return;
 
     try {
@@ -300,23 +325,23 @@ export default function Dashboard() {
       }
 
       // Log the refund transactions
-      const { error: log1Error } = await supabase.from("wallets").insert([
-        {
-          user_id: matchData.user1_id,
-          amount: matchData.stake_amount,
-          description: `Refunded stake for completed match ${matchId}`,
-          transaction_type: "refund",
-        },
-      ]);
+      const { error: log1Error } = await supabase
+        .from("users")
+        .update({
+          credits: user1NewCredits,
+        })
+        .eq("id", matchData.user1_id);
 
-      const { error: log2Error } = await supabase.from("wallets").insert([
-        {
-          user_id: matchData.user2_id,
-          amount: matchData.stake_amount,
-          description: `Refunded stake for completed match ${matchId}`,
-          transaction_type: "refund",
-        },
-      ]);
+      const { error: log2Error } = await supabase
+        .from("users")
+        .update({
+          credits: user2NewCredits,
+        })
+        .eq("id", matchData.user2_id);
+
+      if (log1Error || log2Error) {
+        throw log1Error || log2Error;
+      }
 
       // Mark match as completed
       const { error: statusError } = await supabase
@@ -332,7 +357,7 @@ export default function Dashboard() {
       const { success, error } = await awardBarterCompletionCredits(
         matchData.user1_id,
         matchData.user2_id,
-        matchId
+        8
       );
 
       if (!success) {

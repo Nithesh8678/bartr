@@ -98,7 +98,7 @@ export async function updateWalletBalance(userId: string, amount: number) {
 export async function awardBarterCompletionCredits(
   user1Id: string,
   user2Id: string,
-  amount: number = 10
+  amount: number = 8
 ) {
   const supabase = await createClient();
 
