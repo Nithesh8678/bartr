@@ -254,6 +254,11 @@
   dependencies:
     "@radix-ui/react-compose-refs" "1.1.2"
 
+"@supabase/auth-helpers-react@^0.5.0":
+  version "0.5.0"
+  resolved "https://registry.yarnpkg.com/@supabase/auth-helpers-react/-/auth-helpers-react-0.5.0.tgz#c75f07df578ed06b6d7d66bb12c43e46501e60ed"
+  integrity sha512-5QSaV2CGuhDhd7RlQCoviVEAYsP7XnrFMReOcBazDvVmqSIyjKcDwhLhWvnrxMOq5qjOaA44MHo7wXqDiF0puQ==
+
 "@supabase/auth-js@2.69.1":
   version "2.69.1"
   resolved "https://registry.yarnpkg.com/@supabase/auth-js/-/auth-js-2.69.1.tgz#fcf310d24dfab823ffbf22191e6ceaef933360d8"

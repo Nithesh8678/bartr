@@ -95,6 +95,27 @@ export async function GET(request: NextRequest) {
       });
     }
 
+    // Check pending_requests table
+    try {
+      const { data: pendingRequestsData, error: pendingRequestsError } =
+        await supabase.from("pending_requests").select("*").limit(5);
+
+      result.tables.pending_requests = {
+        exists: !pendingRequestsError,
+        error: pendingRequestsError,
+        schema:
+          pendingRequestsData && pendingRequestsData.length > 0
+            ? Object.keys(pendingRequestsData[0])
+            : [],
+        sample: pendingRequestsData,
+      };
+    } catch (error) {
+      result.errors.push({
+        source: "pending_requests_check",
+        error: String(error),
+      });
+    }
+
     // Get the authenticated user's ID
     const {
       data: { user },
