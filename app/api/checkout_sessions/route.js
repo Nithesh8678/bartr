@@ -1,19 +1,29 @@
 import { NextResponse } from "next/server";
 import { headers } from "next/headers";
-
 import { stripe } from "../../../lib/stripe";
 
-export async function POST() {
+export async function POST(request) {
   try {
     const headersList = await headers();
     const origin = headersList.get("origin");
+    const { amount } = await request.json();
+
+    if (!amount || amount < 1) {
+      return NextResponse.json({ error: "Invalid amount" }, { status: 400 });
+    }
 
     // Create Checkout Sessions from body params.
     const session = await stripe.checkout.sessions.create({
       line_items: [
         {
-          // Provide the exact Price ID (for example, price_1234) of the product you want to sell
-          price: "price_1RCdkHHwUcHOZmZjPrM0aNec",
+          price_data: {
+            currency: "inr",
+            product_data: {
+              name: "Wallet Top-up",
+              description: `Add ₹${amount} to your wallet`,
+            },
+            unit_amount: amount * 100, // Convert to paise
+          },
           quantity: 1,
         },
       ],
@@ -21,8 +31,10 @@ export async function POST() {
       success_url: `${origin}/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/?canceled=true`,
     });
-    return NextResponse.redirect(session.url, 303);
+
+    return NextResponse.json({ url: session.url });
   } catch (err) {
+    console.error("Error creating checkout session:", err);
     return NextResponse.json(
       { error: err.message },
       { status: err.statusCode || 500 }
