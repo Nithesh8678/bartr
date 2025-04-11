@@ -1,5 +1,4 @@
 import { createClient } from "@/app/utils/supabase/server";
-import { cookies } from "next/headers";
 import MatchesClient from "./MatchesClient";
 
 interface MatchData {

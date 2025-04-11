@@ -217,15 +217,42 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
       const isUser1 = matchToStake.user1_id === userId;
       const stakeField = isUser1 ? "stake_status_user1" : "stake_status_user2";
 
-      // Begin transaction
-      const { data, error } = await supabase.rpc("stake_credits", {
-        p_match_id: matchId,
-        p_user_id: userId,
-        p_stake_amount: 10,
-      });
+      // Begin transaction with normal database operations instead of RPC
+      // 1. Update the match stake status
+      const { error: matchUpdateError } = await supabase
+        .from("matches")
+        .update({ [stakeField]: true })
+        .eq("id", matchId);
 
-      if (error) {
-        throw error;
+      if (matchUpdateError) {
+        throw matchUpdateError;
+      }
+
+      // 2. Check if both users have staked to enable chat
+      const partnerStaked = isUser1
+        ? matchToStake.stake_status_user2
+        : matchToStake.stake_status_user1;
+
+      if (partnerStaked) {
+        // Enable chat if both users have staked
+        const { error: chatUpdateError } = await supabase
+          .from("matches")
+          .update({ is_chat_enabled: true })
+          .eq("id", matchId);
+
+        if (chatUpdateError) {
+          throw chatUpdateError;
+        }
+      }
+
+      // 3. Deduct credits from user
+      const { error: creditsUpdateError } = await supabase
+        .from("users")
+        .update({ credits: userCredits - 10 })
+        .eq("id", userId);
+
+      if (creditsUpdateError) {
+        throw creditsUpdateError;
       }
 
       // Update local state
