@@ -127,11 +127,18 @@ export default function ProfileClient({
           </CardContent>
           <CardFooter className="flex flex-col gap-2">
             {profile && (
-              <Link href="/profile/create" className="w-full">
-                <Button variant="outline" className="w-full">
-                  Edit Profile
-                </Button>
-              </Link>
+              <>
+                <Link href="/Dashboard" className="w-full">
+                  <Button className="w-full">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Link href="/profile/create" className="w-full">
+                  <Button variant="outline" className="w-full">
+                    Edit Profile
+                  </Button>
+                </Link>
+              </>
             )}
             <Button
               variant="outline"

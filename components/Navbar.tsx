@@ -9,10 +9,10 @@ import { useState } from "react";
 import { createClient } from "@/app/utils/supabase/client";
 import { useEffect } from "react";
 import { Button } from "./ui/button";
+import Image from "next/image";
 
 const navItems = [
   { name: "Home", href: "/" },
-  { name: "Dashboard", href: "/Dashboard" },
   { name: "Profile", href: "/profile" },
   { name: "Skill Search", href: "/skillsearch" },
   { name: "Incoming Requests", href: "/incoming-requests" },
@@ -35,51 +35,50 @@ export function Navbar() {
   }, [router]);
 
   return (
-    <nav className="sticky top-0 z-50 w-full border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-14 max-w-6xl mx-auto items-center">
-        <div className="mr-4 hidden md:flex">
-          <Link href="/" className="mr-6 flex items-center space-x-2">
-            <span className="hidden font-bold sm:inline-block">Bartr</span>
+    <div className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
+      <nav className="w-full max-w-6xl mx-auto border border-border bg-[#2A0EFF] backdrop-blur supports-[backdrop-filter]:bg-background/60 rounded-lg shadow-lg">
+        <div className="container flex h-12 items-center justify-between p-4 bg-[#2A0EFF] rounded-lg">
+          <Link href="/" className="flex items-center space-x-2">
+            <Image src="/assets/bartr. 1.png" alt="Logo" width={60} height={60} />
           </Link>
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {user &&
-              navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "transition-colors hover:text-foreground/80",
-                    pathname === item.href
-                      ? "text-foreground"
-                      : "text-foreground/60"
-                  )}
-                >
-                  {item.name}
-                </Link>
-              ))}
-          </nav>
-        </div>
-        <div className="flex flex-1 items-center justify-between space-x-2 md:justify-end">
-          <div className="w-full flex-1 md:w-auto md:flex-none">
-            {/* Add search or other elements here if needed */}
-          </div>
-          <nav className="flex items-center">
-            {user ? (
-              <Button
-                onClick={() => {
-                  supabase.auth.signOut().then(() => {
-                    router.push("/");
-                  });
-                }}
-              >
-                Logout
-              </Button>
-            ) : (
-              <SignInWithGoogleButton />
+          
+          <div className="flex items-center space-x-4">
+            {user && (
+              <nav className="hidden md:flex items-center space-x-6 text-sm font-medium">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={cn(
+                      "transition-colors hover:text-foreground/80",
+                      pathname === item.href
+                        ? "text-foreground"
+                        : "text-white"
+                    )}
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+              </nav>
             )}
-          </nav>
+            <nav className="flex items-center">
+              {user ? (
+                <Button
+                  onClick={() => {
+                    supabase.auth.signOut().then(() => {
+                      router.push("/");
+                    });
+                  }}
+                >
+                  Logout
+                </Button>
+              ) : (
+                <SignInWithGoogleButton />
+              )}
+            </nav>
+          </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+    </div>
   );
 }
