@@ -28,7 +28,8 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
   const router = useRouter();
 
   useEffect(() => {
-    // Set up real-time subscription for matches table
+    fetchMatches();
+
     const supabase = createClient();
     const subscription = supabase
       .channel("public:matches")
@@ -40,14 +41,12 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
           table: "matches",
         },
         () => {
-          // Refetch matches when changes occur
           fetchMatches();
         }
       )
       .subscribe();
 
     return () => {
-      // Clean up subscription
       supabase.removeChannel(subscription);
     };
   }, []);
@@ -57,12 +56,9 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
       setLoading(true);
       const supabase = createClient();
 
-      // Get authenticated user
-      const { data: authData, error: authError } =
-        await supabase.auth.getUser();
+      const { data: authData, error: authError } = await supabase.auth.getUser();
 
       if (authError) {
-        console.error("Authentication error:", authError);
         throw new Error("Authentication failed");
       }
 
@@ -72,7 +68,6 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
 
       const userId = authData.user.id;
 
-      // Fetch all matches where the current user is either user1 or user2
       const { data: matchesData, error: matchesError } = await supabase
         .from("matches")
         .select("*")
@@ -80,7 +75,6 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
         .eq("status", "active");
 
       if (matchesError) {
-        console.error("Error fetching matches:", matchesError);
         throw matchesError;
       }
 
@@ -89,23 +83,19 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
         return;
       }
 
-      // Get all partner user IDs
       const partnerIds = matchesData.map((match) =>
         match.user1_id === userId ? match.user2_id : match.user1_id
       );
 
-      // Fetch partner user details
       const { data: usersData, error: usersError } = await supabase
         .from("users")
         .select("id, email, name")
         .in("id", partnerIds);
 
       if (usersError) {
-        console.error("Error fetching users:", usersError);
         throw usersError;
       }
 
-      // Create a map of user IDs to their details
       const userDetailsMap = new Map();
       usersData?.forEach((user) => {
         userDetailsMap.set(user.id, {
@@ -114,7 +104,6 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
         });
       });
 
-      // Combine the data
       const combinedMatches = matchesData.map((match) => {
         const partnerId =
           match.user1_id === userId ? match.user2_id : match.user1_id;
@@ -146,21 +135,22 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
 
   if (loading && matches.length === 0) {
     return (
-      <div className="container mx-auto p-4 flex justify-center items-center min-h-[200px]">
-        <RefreshCw className="h-6 w-6 animate-spin text-gray-500" />
+      <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] h-screen flex justify-center items-center">
+        <RefreshCw className="h-6 w-6 animate-spin text-white" />
       </div>
     );
   }
 
   return (
-    <div className="container mx-auto p-4">
+    <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] min-h-screen">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Your Matches</h1>
+        <h1 className="text-2xl font-bold text-white">Your Matches</h1>
         <Button
           variant="outline"
           size="sm"
           onClick={() => fetchMatches()}
           disabled={loading}
+          className="bg-white/10 hover:bg-white/20 text-white border-white/20"
         >
           {loading ? (
             <RefreshCw className="h-4 w-4 animate-spin mr-2" />
@@ -178,7 +168,7 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
       )}
 
       {matches.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-lg border">
+        <div className="text-center py-12 bg-white rounded-lg border shadow-lg shadow-[#2A0EFF]/10">
           <p className="text-gray-500 mb-2">You don't have any matches yet</p>
           <p className="text-sm text-gray-400">
             Browse skills and connect with others to see your matches here
@@ -187,10 +177,10 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {matches.map((match) => (
-            <Card key={match.id} className="overflow-hidden">
+            <Card key={match.id} className="overflow-hidden bg-white shadow-lg shadow-[#2A0EFF]/10 hover:shadow-xl hover:-translate-y-1 transition-all duration-200">
               <CardContent className="p-0">
                 <div className="p-4">
-                  <h3 className="font-medium text-lg">{match.partner_name}</h3>
+                  <h3 className="font-medium text-lg text-[#2A0EFF]">{match.partner_name}</h3>
                   <p className="text-gray-500 text-sm mb-4">
                     {match.partner_email}
                   </p>
@@ -200,7 +190,7 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
                 </div>
                 <div className="border-t p-3 bg-gray-50 flex justify-between items-center">
                   <Button
-                    className="w-full"
+                    className="w-full bg-[#2A0EFF] hover:bg-[#1A0EDF] text-white"
                     onClick={() => navigateToChat(match.id)}
                   >
                     <MessageCircle className="h-4 w-4 mr-2" />

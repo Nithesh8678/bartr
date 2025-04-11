@@ -39,7 +39,7 @@ export default function AddMoneyToWallet() {
       <Button
         onClick={handleAddMoney}
         disabled={isLoading}
-        className="w-full p-4 text-lg font-semibold"
+        className="w-full p-4 text-lg font-semibold bg-[#2A0EFF] hover:bg-[#1A0EDF] text-white transition-all duration-200"
       >
         Add ₹{AMOUNT} to Wallet
       </Button>

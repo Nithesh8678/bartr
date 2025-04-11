@@ -93,12 +93,12 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
   }
 
   return (
-    <Card>
+    <Card className="bg-white gap-y-2 hover:shadow-2xl hover:-translate-y-1 transition-all duration-200">
       <CardHeader>
-        <CardTitle>Token Balance</CardTitle>
+        <CardTitle className="text-[#2A0EFF]">Token Balance</CardTitle>
       </CardHeader>
       <CardContent>
-        <p className="text-2xl font-bold">
+        <p className="text-2xl font-bold text-[#2A0EFF]">
           {balance ? Math.floor(balance / 10) : "0.00"}
         </p>
       </CardContent>

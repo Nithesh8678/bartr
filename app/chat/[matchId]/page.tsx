@@ -256,7 +256,7 @@ export default function ChatPage() {
         <p className="text-red-600 mb-4">{error}</p>
         <Link href="/browse">
           <Button variant="outline">
-            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+            <ArrowLeft className="mr-2 h-4 w-4"/> Go Back
           </Button>
         </Link>
       </div>
@@ -264,7 +264,7 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 pt-20 pb-4 w-full px-16 border border-gray-300 shadow-md">
       <Toaster position="top-center" richColors />
       {/* Chat Header */}
       <header className="sticky top-0 z-10 flex items-center p-3 border-b bg-white shadow-sm">
@@ -274,16 +274,16 @@ export default function ChatPage() {
           onClick={() => router.back()}
           className="mr-2"
         >
-          <ArrowLeft className="h-5 w-5" />
+          <ArrowLeft className="h-5 w-5" color="black"/>
         </Button>
-        <h1 className="flex-1 text-lg font-semibold text-center truncate">
+        <h1 className="flex-1 text-lg font-semibold text-center truncate text-black">
           Chat with {chatPartner?.name || "User"}
         </h1>
         <div className="w-10"></div> {/* Spacer to balance back button */}
       </header>
 
       {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto p-4 space-y-3 border border-gray-300">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -320,14 +320,14 @@ export default function ChatPage() {
       {/* Message Input Form */}
       <form
         onSubmit={handleSendMessage}
-        className="sticky bottom-0 flex items-center gap-2 p-3 border-t bg-gray-100"
+        className="sticky bottom-0 flex items-center gap-2 p-3 border-2 border-gray-300"
       >
         <Input
           type="text"
           placeholder="Type your message..."
           value={newMessage}
           onChange={(e) => setNewMessage(e.target.value)}
-          className="flex-1 bg-white"
+          className="flex-1 bg-white border border-gray-300 text-black"
           disabled={isSending}
           autoComplete="off"
         />

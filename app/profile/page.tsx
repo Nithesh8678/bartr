@@ -25,8 +25,10 @@ export default async function ProfilePage() {
     .single();
 
   return (
-    <Suspense fallback={<Loading />}>
-      <ProfileClient initialUser={user} initialProfile={userProfile} />
-    </Suspense>
+    <div className="min-h-screen">
+      <Suspense fallback={<Loading />}>
+        <ProfileClient initialUser={user} initialProfile={userProfile} />
+      </Suspense>
+    </div>
   );
 }

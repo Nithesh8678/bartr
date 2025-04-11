@@ -226,8 +226,8 @@ export default function IncomingRequestsClient({
   }
 
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-6">Incoming Requests</h1>
+    <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] h-screen">
+      <h1 className="text-2xl font-bold mb-6 text-white">Incoming Requests</h1>
 
       {requests.length === 0 ? (
         <p className="text-gray-500">No pending requests at the moment.</p>
@@ -236,10 +236,10 @@ export default function IncomingRequestsClient({
           {requests.map((request) => (
             <div
               key={request.id}
-              className="border p-4 rounded-md shadow-sm flex justify-between items-center"
+              className="border p-4 bg-white rounded-md shadow-lg shadow-[#2A0EFF]/10 flex justify-between items-center"
             >
               <div>
-                <p className="font-medium">From: {request.sender_email}</p>
+                <p className="font-medium text-[#2A0EFF]">From: {request.sender_email}</p>
                 <p className="text-sm text-gray-500">
                   Status:{" "}
                   {request.status === "accepted" ? "Accepted" : "Pending"}
