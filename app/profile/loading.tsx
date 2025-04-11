@@ -1,10 +1,8 @@
 import { createClient } from "@/app/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { Suspense } from "react";
-import ProfileClient from "./ProfileClient";
-import Loading from "./loading";
+import LoadingClient from "./LoadingClient";
 
-export default async function ProfilePage() {
+export default async function Loading() {
   const supabase = await createClient();
 
   // Get authenticated user
@@ -24,9 +22,5 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
-  return (
-    <Suspense fallback={<Loading />}>
-      <ProfileClient initialUser={user} initialProfile={userProfile} />
-    </Suspense>
-  );
+  return <LoadingClient initialUser={user} initialProfile={userProfile} />;
 }
