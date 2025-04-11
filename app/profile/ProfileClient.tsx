@@ -124,6 +124,13 @@ export default function ProfileClient({
               </Button>
             </Link>
           )}
+          {profile && (
+            <Link href="/credits-store" className="w-full">
+              <Button variant="outline" className="w-full">
+                Recharge Credits
+              </Button>
+            </Link>
+          )}
           <Button variant="outline" className="w-full" onClick={handleSignOut}>
             Sign Out
           </Button>
