@@ -44,14 +44,14 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
 
     // Subscribe to wallet changes
     const subscription = supabase
-      .channel(`wallet_changes_${userId}`)
+      .channel(`credits_changes_${userId}`)
       .on(
         "postgres_changes" as any,
         {
           event: "*",
           schema: "public",
-          table: "wallets",
-          filter: `user_id=eq.${userId}`,
+          table: "users",
+          filter: `id=eq.${userId}`,
         },
         (payload: WalletPayload) => {
           if (payload.new) {
@@ -99,7 +99,7 @@ export default function WalletDisplay({ userId }: WalletDisplayProps) {
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold text-[#2A0EFF]">
-          {balance ? Math.floor(balance / 10) : "0.00"}
+          {balance ? Math.floor(balance) : "0.00"}
         </p>
       </CardContent>
     </Card>

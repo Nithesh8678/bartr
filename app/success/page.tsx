@@ -49,7 +49,7 @@ export default async function Success({
 
     // Add the amount to the user's wallet (convert from paise to rupees)
     const amount = amount_total ? amount_total / 100 : 0;
-    const { success, error } = await updateWalletBalance(user.id, amount);
+    const { success, error } = await updateWalletBalance(user.id, amount / 10);
 
     if (!success) {
       console.error("Error updating wallet:", error);

@@ -11,18 +11,18 @@ export async function getWalletBalance(userId: string) {
 
   try {
     const { data, error } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", userId)
+      .from("users")
+      .select("credits")
+      .eq("id", userId)
       .single();
 
     if (error) {
       if (error.code === "PGRST116") {
         // Wallet doesn't exist, create one with 0 balance
         const { data: newWallet, error: createError } = await supabase
-          .from("wallets")
-          .insert([{ user_id: userId, balance: 0 }])
-          .select("balance")
+          .from("users")
+          .insert([{ credits: 0 }])
+          .select("credits")
           .single();
 
         if (createError) {
@@ -30,13 +30,13 @@ export async function getWalletBalance(userId: string) {
           return { success: false, error: createError };
         }
 
-        return { success: true, balance: newWallet.balance };
+        return { success: true, balance: newWallet.credits };
       }
       console.error("Error fetching wallet:", error);
       return { success: false, error };
     }
 
-    return { success: true, balance: data.balance };
+    return { success: true, balance: data.credits };
   } catch (error) {
     console.error("Error in getWalletBalance:", error);
     return { success: false, error };
@@ -54,9 +54,9 @@ export async function updateWalletBalance(userId: string, amount: number) {
   try {
     // First, get the current wallet or create one if it doesn't exist
     const { data: wallet, error: fetchError } = await supabase
-      .from("wallets")
-      .select("balance")
-      .eq("user_id", userId)
+      .from("users")
+      .select("credits")
+      .eq("id", userId)
       .single();
 
     if (fetchError && fetchError.code !== "PGRST116") {
@@ -64,17 +64,15 @@ export async function updateWalletBalance(userId: string, amount: number) {
       return { success: false, error: fetchError };
     }
 
-    const currentBalance = wallet?.balance || 0;
+    const currentBalance = wallet?.credits || 0;
     const newBalance = currentBalance + amount;
 
     // Update or insert the wallet
     const { data, error } = await supabase
-      .from("wallets")
-      .upsert(
-        { user_id: userId, balance: newBalance },
-        { onConflict: "user_id" }
-      )
-      .select("balance")
+      .from("users")
+      .update({ credits: newBalance })
+      .eq("id", userId)
+      .select("credits")
       .single();
 
     if (error) {
@@ -82,7 +80,7 @@ export async function updateWalletBalance(userId: string, amount: number) {
       return { success: false, error };
     }
 
-    return { success: true, balance: data.balance };
+    return { success: true, balance: data.credits };
   } catch (error) {
     console.error("Error in updateWalletBalance:", error);
     return { success: false, error };
