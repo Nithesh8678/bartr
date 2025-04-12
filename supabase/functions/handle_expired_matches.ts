@@ -1,5 +1,7 @@
-// This function will be run as a scheduled function in Supabase
+// Supabase Edge function running on Deno
 // to check for expired matches and refund credits to users who have submitted
+
+export {}; // Add empty export to make this a module
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
