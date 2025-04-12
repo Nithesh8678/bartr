@@ -14,6 +14,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
+import { GridSmallBackgroundDemo } from "@/components/GridSmallBackgroundDemo";
 
 interface MatchData {
   id: string;
@@ -315,139 +316,147 @@ export default function MatchesClient({ initialMatches }: MatchesClientProps) {
   }
 
   return (
-    <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-white">Your Matches</h1>
-        <div className="flex items-center space-x-4">
-          <div className="bg-white/10 px-3 py-1 rounded-md text-white">
-            <span className="flex items-center">
-              <Coins className="h-4 w-4 mr-1" /> {userCredits} Credits
-            </span>
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchMatches()}
-            disabled={loading}
-            className="bg-white/10 hover:bg-white/20 text-white border-white/20"
-          >
-            {loading ? (
-              <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="h-4 w-4 mr-2" />
-            )}
-            Refresh
-          </Button>
-        </div>
-      </div>
+    <div className="relative">
+      <GridSmallBackgroundDemo />
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
-          Error: {error}
-        </div>
-      )}
-
-      {matches.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border shadow-lg shadow-[#2A0EFF]/10">
-          <p className="text-gray-500 mb-2">You don't have any matches yet</p>
-          <p className="text-sm text-gray-400">
-            Browse skills and connect with others to see your matches here
-          </p>
-        </div>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {matches.map((match) => (
-            <Card
-              key={match.id}
-              className="overflow-hidden bg-white shadow-lg shadow-[#2A0EFF]/10 hover:shadow-xl hover:-translate-y-1 transition-all duration-200"
+      <div
+        className="container mx-auto pt-20 px-4 min-h-screen relative z-10"
+        style={{ backgroundColor: "transparent" }}
+      >
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-white">Your Matches</h1>
+          <div className="flex items-center space-x-4">
+            <div className="bg-white/10 px-3 py-1 rounded-md text-white">
+              <span className="flex items-center">
+                <Coins className="h-4 w-4 mr-1" /> {userCredits} Credits
+              </span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchMatches()}
+              disabled={loading}
+              className="bg-white/10 hover:bg-white/20 text-white border-white/20"
             >
-              <CardContent className="p-0">
-                <div className="p-4">
-                  <h3 className="font-medium text-lg text-[#2A0EFF]">
-                    {match.partner_name}
-                  </h3>
-                  <p className="text-gray-500 text-sm mb-2">
-                    {match.partner_email}
-                  </p>
+              {loading ? (
+                <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <RefreshCw className="h-4 w-4 mr-2" />
+              )}
+              Refresh
+            </Button>
+          </div>
+        </div>
 
-                  {/* Stake Status Indicators */}
-                  <div className="flex items-center justify-between my-2 p-2 bg-gray-50 rounded-md">
-                    <div className="flex items-center text-xs text-gray-500">
-                      <div
-                        className={`h-2 w-2 rounded-full mr-1 ${
-                          getUserStakeStatus(match)
-                            ? "bg-green-500"
-                            : "bg-gray-300"
-                        }`}
-                      ></div>
-                      Your stake:{" "}
-                      {getUserStakeStatus(match) ? "Complete" : "Pending"}
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-md">
+            Error: {error}
+          </div>
+        )}
+
+        {matches.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg border shadow-lg shadow-[#2A0EFF]/10">
+            <p className="text-gray-500 mb-2">You don't have any matches yet</p>
+            <p className="text-sm text-gray-400">
+              Browse skills and connect with others to see your matches here
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {matches.map((match) => (
+              <Card
+                key={match.id}
+                className="overflow-hidden bg-white shadow-lg shadow-[#2A0EFF]/10 hover:shadow-xl hover:-translate-y-1 transition-all duration-200"
+              >
+                <CardContent className="p-0">
+                  <div className="p-4">
+                    <h3 className="font-medium text-lg text-[#2A0EFF]">
+                      {match.partner_name}
+                    </h3>
+                    <p className="text-gray-500 text-sm mb-2">
+                      {match.partner_email}
+                    </p>
+
+                    {/* Stake Status Indicators */}
+                    <div className="flex items-center justify-between my-2 p-2 bg-gray-50 rounded-md">
+                      <div className="flex items-center text-xs text-gray-500">
+                        <div
+                          className={`h-2 w-2 rounded-full mr-1 ${
+                            getUserStakeStatus(match)
+                              ? "bg-green-500"
+                              : "bg-gray-300"
+                          }`}
+                        ></div>
+                        Your stake:{" "}
+                        {getUserStakeStatus(match) ? "Complete" : "Pending"}
+                      </div>
+                      <div className="flex items-center text-xs text-gray-500">
+                        <div
+                          className={`h-2 w-2 rounded-full mr-1 ${
+                            getPartnerStakeStatus(match)
+                              ? "bg-green-500"
+                              : "bg-gray-300"
+                          }`}
+                        ></div>
+                        Partner stake:{" "}
+                        {getPartnerStakeStatus(match) ? "Complete" : "Pending"}
+                      </div>
                     </div>
-                    <div className="flex items-center text-xs text-gray-500">
-                      <div
-                        className={`h-2 w-2 rounded-full mr-1 ${
-                          getPartnerStakeStatus(match)
-                            ? "bg-green-500"
-                            : "bg-gray-300"
-                        }`}
-                      ></div>
-                      Partner stake:{" "}
-                      {getPartnerStakeStatus(match) ? "Complete" : "Pending"}
-                    </div>
+
+                    {match.project_end_date && (
+                      <div className="flex items-center text-xs text-gray-400 mt-2">
+                        <Calendar className="h-3 w-3 mr-1" />
+                        Due:{" "}
+                        {new Date(match.project_end_date).toLocaleDateString()}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-gray-400 mt-1">
+                      Matched on{" "}
+                      {new Date(match.created_at).toLocaleDateString()}
+                    </p>
                   </div>
 
-                  {match.project_end_date && (
-                    <div className="flex items-center text-xs text-gray-400 mt-2">
-                      <Calendar className="h-3 w-3 mr-1" />
-                      Due:{" "}
-                      {new Date(match.project_end_date).toLocaleDateString()}
-                    </div>
-                  )}
-
-                  <p className="text-xs text-gray-400 mt-1">
-                    Matched on {new Date(match.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-
-                <div className="border-t p-3 bg-gray-50 flex justify-between items-center">
-                  {!getUserStakeStatus(match) ? (
-                    <Button
-                      className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
-                      onClick={() => stakeCredits(match.id)}
-                      disabled={stakingId === match.id || userCredits < 10}
-                    >
-                      {stakingId === match.id ? (
-                        <RefreshCw className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Coins className="h-4 w-4 mr-2" />
-                      )}
-                      Stake 10 Credits
-                    </Button>
-                  ) : !match.is_chat_enabled ? (
-                    <Button
-                      className="w-full bg-gray-300 text-gray-600 cursor-not-allowed"
-                      disabled
-                    >
-                      <span className="flex items-center">
-                        Waiting for partner{" "}
-                        <ArrowRight className="h-4 w-4 ml-2" />
-                      </span>
-                    </Button>
-                  ) : (
-                    <Button
-                      className="w-full bg-[#2A0EFF] hover:bg-[#1A0EDF] text-white"
-                      onClick={() => navigateToChat(match.id)}
-                    >
-                      <MessageCircle className="h-4 w-4 mr-2" />
-                      Chat
-                    </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                  <div className="border-t p-3 bg-gray-50 flex justify-between items-center">
+                    {!getUserStakeStatus(match) ? (
+                      <Button
+                        className="w-full bg-yellow-500 hover:bg-yellow-600 text-white"
+                        onClick={() => stakeCredits(match.id)}
+                        disabled={stakingId === match.id || userCredits < 10}
+                      >
+                        {stakingId === match.id ? (
+                          <RefreshCw className="h-4 w-4 animate-spin mr-2" />
+                        ) : (
+                          <Coins className="h-4 w-4 mr-2" />
+                        )}
+                        Stake 10 Credits
+                      </Button>
+                    ) : !match.is_chat_enabled ? (
+                      <Button
+                        className="w-full bg-gray-300 text-gray-600 cursor-not-allowed"
+                        disabled
+                      >
+                        <span className="flex items-center">
+                          Waiting for partner{" "}
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </span>
+                      </Button>
+                    ) : (
+                      <Button
+                        className="w-full bg-[#2A0EFF] hover:bg-[#1A0EDF] text-white"
+                        onClick={() => navigateToChat(match.id)}
+                      >
+                        <MessageCircle className="h-4 w-4 mr-2" />
+                        Chat
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

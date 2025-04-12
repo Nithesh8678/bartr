@@ -107,11 +107,12 @@ export function Navbar() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "transition-colors hover:text-white/80",
+                    "transition-colors hover:text-white/80 relative group",
                     pathname === item.href ? "text-white" : "text-white"
                   )}
                 >
                   {item.name}
+                  <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-white transition-all duration-300 group-hover:w-full"></span>
                 </Link>
               ))}
             </nav>

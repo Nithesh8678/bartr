@@ -385,12 +385,12 @@ export default function BrowsePage() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.2 }}
                       >
-                        {renderSkills(
+                        {/* {renderSkills(
                           currentProfile.skills_offered || [],
                           "Skills Offered",
                           "bg-gradient-to-r from-blue-50 to-indigo-100",
                           "text-indigo-800"
-                        )}
+                        )} */}
                       </motion.div>
                     </CardContent>
                     <CardFooter className="p-4 border-t border-indigo-50 bg-gradient-to-r from-indigo-50 to-blue-50">
