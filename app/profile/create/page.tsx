@@ -29,7 +29,6 @@ export default function CreateProfilePage() {
     timezone: "",
   });
   const [skillsOffered, setSkillsOffered] = useState<string[]>([]);
-  const [skillsNeeded, setSkillsNeeded] = useState<string[]>([]);
   const [dbInfo, setDbInfo] = useState<any>(null);
   const [isCheckingDb, setIsCheckingDb] = useState(false);
 
@@ -61,9 +60,8 @@ export default function CreateProfilePage() {
         });
 
         // Get user skills
-        const { offeredSkills, neededSkills } = await getUserSkills(user.id);
+        const { offeredSkills } = await getUserSkills(user.id);
         if (offeredSkills.length > 0) setSkillsOffered(offeredSkills);
-        if (neededSkills.length > 0) setSkillsNeeded(neededSkills);
       }
     };
 
@@ -100,7 +98,7 @@ export default function CreateProfilePage() {
         location: formData.location,
         timezone: formData.timezone,
         offeredSkills: skillsOffered,
-        neededSkills: skillsNeeded,
+        neededSkills: [], // Keep this empty array to maintain API compatibility
       };
 
       // Call the /api/saveProfile endpoint
@@ -173,55 +171,54 @@ export default function CreateProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  placeholder="Your name"
-                  required
-                />
-              </div>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="name">Full Name</Label>
+              <Input
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Enter your full name"
+                required
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="bio">Bio</Label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleChange}
-                  placeholder="Tell us about yourself and your expertise"
-                  className="w-full min-h-[120px] p-3 border rounded-md"
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="bio">Bio</Label>
+              <Input
+                id="bio"
+                name="bio"
+                value={formData.bio}
+                onChange={handleChange}
+                placeholder="Tell us about yourself"
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="location">Location</Label>
-                  <Input
-                    id="location"
-                    name="location"
-                    value={formData.location}
-                    onChange={handleChange}
-                    placeholder="Your location"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="timezone">Timezone</Label>
-                  <Input
-                    id="timezone"
-                    name="timezone"
-                    value={formData.timezone}
-                    onChange={handleChange}
-                    placeholder="Your timezone"
-                  />
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="location">Location</Label>
+              <Input
+                id="location"
+                name="location"
+                value={formData.location}
+                onChange={handleChange}
+                placeholder="Your city or country"
+              />
+            </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="timezone">Timezone</Label>
+              <Input
+                id="timezone"
+                name="timezone"
+                value={formData.timezone}
+                onChange={handleChange}
+                placeholder="e.g. UTC+5:30"
+              />
+            </div>
+
+            <div className="space-y-4 pt-4">
+              <h3 className="text-lg font-medium">Your Skills</h3>
               <SkillsInput
                 label="Skills You Offer"
                 skills={skillsOffered}
@@ -230,13 +227,15 @@ export default function CreateProfilePage() {
                 textColor="text-primary"
               />
 
-              <SkillsInput
-                label="Skills You Need"
-                skills={skillsNeeded}
-                setSkills={setSkillsNeeded}
-                backgroundColor="bg-secondary/10"
-                textColor="text-secondary"
-              />
+              <div className="mt-4 p-4 bg-blue-50 rounded-lg text-blue-800">
+                <p className="text-sm">
+                  Looking for skills? Go to the{" "}
+                  <a href="/skillsearch" className="font-medium underline">
+                    Skill Search
+                  </a>{" "}
+                  page to find people with the skills you need.
+                </p>
+              </div>
             </div>
 
             <Button type="submit" className="w-full" disabled={isLoading}>

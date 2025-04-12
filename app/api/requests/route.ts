@@ -71,11 +71,22 @@ export async function POST(request: NextRequest) {
           ? pendingRequest.sender_id
           : pendingRequest.receiver_id;
 
+      // Calculate a project end date 7 days from now
+      const projectEndDate = new Date();
+      projectEndDate.setDate(projectEndDate.getDate() + 7);
+
       const { error: matchError } = await supabase.from("matches").insert({
         user1_id: user1,
         user2_id: user2,
         status: "active",
         created_at: new Date().toISOString(),
+        project_end_date: projectEndDate.toISOString(),
+        stake_status_user1: false,
+        stake_status_user2: false,
+        is_chat_enabled: false,
+        project_submitted_user1: false,
+        project_submitted_user2: false,
+        stake_amount: 10,
       });
 
       if (matchError) {

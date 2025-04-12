@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { X } from "lucide-react";
 
 interface SkillsInputProps {
@@ -21,54 +21,60 @@ export default function SkillsInput({
   backgroundColor = "bg-primary/10",
   textColor = "text-primary",
 }: SkillsInputProps) {
-  const [tempSkill, setTempSkill] = useState("");
+  const [newSkill, setNewSkill] = useState("");
 
-  const addSkill = () => {
-    if (tempSkill.trim() && !skills.includes(tempSkill.trim())) {
-      setSkills([...skills, tempSkill.trim()]);
-      setTempSkill("");
+  const handleAddSkill = () => {
+    if (newSkill.trim() && !skills.includes(newSkill.trim())) {
+      setSkills([...skills, newSkill.trim()]);
+      setNewSkill("");
     }
   };
 
-  const removeSkill = (skill: string) => {
-    setSkills(skills.filter((s) => s !== skill));
+  const handleRemoveSkill = (skillToRemove: string) => {
+    setSkills(skills.filter((skill) => skill !== skillToRemove));
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddSkill();
+    }
   };
 
   return (
-    <div>
-      <Label htmlFor={label.toLowerCase().replace(/\s/g, "-")}>{label}</Label>
-      <div className="flex space-x-2">
+    <div className="space-y-2">
+      <Label>{label}</Label>
+      <div className="flex gap-2">
         <Input
-          id={label.toLowerCase().replace(/\s/g, "-")}
-          value={tempSkill}
-          onChange={(e) => setTempSkill(e.target.value)}
-          placeholder={`Add ${label.toLowerCase()}`}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              addSkill();
-            }
-          }}
+          value={newSkill}
+          onChange={(e) => setNewSkill(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="Type a skill and press Enter"
+          className="flex-1 text-black"
         />
-        <Button type="button" onClick={addSkill} size="sm">
+        <Button
+          type="button"
+          onClick={handleAddSkill}
+          disabled={!newSkill.trim()}
+        >
           Add
         </Button>
       </div>
       <div className="flex flex-wrap gap-2 mt-2">
-        {skills.map((skill) => (
-          <div
-            key={skill}
-            className={`flex items-center ${backgroundColor} ${textColor} px-3 py-1 rounded-full text-sm`}
+        {skills.map((skill, index) => (
+          <span
+            key={index}
+            className={`px-3 py-1 rounded-full text-sm font-medium ${backgroundColor} ${textColor} flex items-center gap-1`}
           >
             {skill}
             <button
               type="button"
-              onClick={() => removeSkill(skill)}
-              className={`ml-2 ${textColor}/80 hover:${textColor}`}
+              onClick={() => handleRemoveSkill(skill)}
+              className="hover:text-red-500"
             >
               <X size={14} />
             </button>
-          </div>
+          </span>
         ))}
       </div>
     </div>
