@@ -17,6 +17,7 @@ import WalletDisplay from "@/app/components/WalletDisplay";
 import AddMoneyToWallet from "@/app/components/AddMoneyToWallet";
 import Image from "next/image";
 import SkillsInput from "@/app/components/SkillsInput";
+import { GridSmallBackgroundDemo } from "@/components/GridSmallBackgroundDemo";
 
 // Add color array for skills
 const skillColors = [
@@ -93,12 +94,18 @@ export default function ProfileClient({
   };
 
   return (
-    <div className="w-full">
+    <div className="w-full bg-white h-full">
       {/* Header Section with Solid Blue */}
-      <div className="relative w-full h-[400px] bg-[#2A0EFF]">
-        <div className="absolute inset-0 bg-grid-white/10" />
+      <div className="relative w-full h-[410px] bg-[#242FFF]">
+        <div
+          className="absolute inset-0 bg-grid-white/10"
+          style={{
+            backgroundSize: "10px 10px",
+            backgroundImage:
+              "linear-gradient(to right,rgba(255,255,255,0.1) 1px,transparent 1px), linear-gradient(to bottom,rgba(255,255,255,0.1) 1px,transparent 1px)",
+          }}
+        />
         <div className="container mx-auto px-4">
-          
           <div className="flex items-end gap-6 pt-20 px-10">
             <div className="relative w-40 h-40 rounded-full border-4 border-white overflow-hidden bg-white">
               {profile?.avatar_url ? (
@@ -110,7 +117,11 @@ export default function ProfileClient({
                 />
               ) : (
                 <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                  <svg className="w-20 h-20 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                  <svg
+                    className="w-20 h-20 text-gray-400"
+                    fill="currentColor"
+                    viewBox="0 0 24 24"
+                  >
                     <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
                   </svg>
                 </div>
@@ -169,10 +180,7 @@ export default function ProfileClient({
                 />
               </CardContent>
               <CardFooter className="flex justify-end gap-2">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsEditing(false)}
-                >
+                <Button variant="outline" onClick={() => setIsEditing(false)}>
                   Cancel
                 </Button>
                 <Button

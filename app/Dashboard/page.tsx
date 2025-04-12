@@ -50,6 +50,9 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [workContents, setWorkContents] = useState<Record<string, string>>({});
+  const [partnerWorkContents, setPartnerWorkContents] = useState<
+    Record<string, string>
+  >({});
   const [submittingMatch, setSubmittingMatch] = useState<string | null>(null);
   const [confirmingMatch, setConfirmingMatch] = useState<string | null>(null);
   const router = useRouter();
@@ -74,8 +77,25 @@ export default function Dashboard() {
       )
       .subscribe();
 
+    // Add subscription for messages table to catch partner submissions
+    const messagesSubscription = supabase
+      .channel("public:messages")
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "messages",
+        },
+        () => {
+          fetchMatches();
+        }
+      )
+      .subscribe();
+
     return () => {
       supabase.removeChannel(subscription);
+      supabase.removeChannel(messagesSubscription);
     };
   }, []);
 
@@ -148,18 +168,120 @@ export default function Dashboard() {
         });
       });
 
+      // Get ALL messages for the matches, including both users' submissions
+      const matchIds = matchesData.map((match) => match.id);
+      let { data: messagesData, error: messagesError } = await supabase
+        .from("messages")
+        .select("*")
+        .in("match_id", matchIds)
+        .eq("message_type", "submission")
+        .order("timestamp", { ascending: false });
+
+      // If we didn't get any "submission" type messages, try without the filter
+      // in case the message_type column doesn't exist yet
+      if (!messagesData || messagesData.length === 0) {
+        const { data: allMessages, error: allMessagesError } = await supabase
+          .from("messages")
+          .select("*")
+          .in("match_id", matchIds)
+          .order("timestamp", { ascending: false });
+
+        if (!allMessagesError && allMessages) {
+          console.log("Fetched all messages:", allMessages);
+          // Use these instead
+          messagesData = allMessages;
+        }
+      }
+
+      console.log("All messages found:", messagesData);
+
+      // Process each match
+      for (const match of matchesData) {
+        const isUser1 = userId === match.user1_id;
+        const partnerId = isUser1 ? match.user2_id : match.user1_id;
+
+        // Find messages for this specific match
+        const matchMessages =
+          messagesData?.filter((msg) => msg.match_id === match.id) || [];
+
+        console.log(`Match ${match.id} messages:`, matchMessages);
+
+        // Handle USER's OWN submission first
+        if (isUser1) {
+          // User1 - get from work_description
+          if (match.project_submitted_user1) {
+            setWorkContents((prev) => ({
+              ...prev,
+              [match.id]: match.work_description || "",
+            }));
+          } else {
+            setWorkContents((prev) => ({
+              ...prev,
+              [match.id]: "",
+            }));
+          }
+        } else {
+          // User2 - get from messages
+          const userMessages = matchMessages.filter(
+            (msg) => msg.sender_id === userId
+          );
+
+          if (userMessages.length > 0 && match.project_submitted_user2) {
+            setWorkContents((prev) => ({
+              ...prev,
+              [match.id]: userMessages[0].message || "",
+            }));
+          } else {
+            setWorkContents((prev) => ({
+              ...prev,
+              [match.id]: "",
+            }));
+          }
+        }
+
+        // Handle PARTNER'S submission
+        if (isUser1) {
+          // Partner is User2, get submission from messages
+          const partnerMessages = matchMessages.filter(
+            (msg) => msg.sender_id === partnerId
+          );
+
+          console.log("Partner (User2) messages:", partnerMessages);
+
+          if (partnerMessages.length > 0 && match.project_submitted_user2) {
+            setPartnerWorkContents((prev) => ({
+              ...prev,
+              [match.id]: partnerMessages[0].message || "",
+            }));
+          } else {
+            setPartnerWorkContents((prev) => ({
+              ...prev,
+              [match.id]: match.project_submitted_user2
+                ? "Partner has submitted their work but content is unavailable."
+                : "Partner hasn't submitted work yet.",
+            }));
+          }
+        } else {
+          // Partner is User1, get submission from work_description
+          if (match.project_submitted_user1) {
+            setPartnerWorkContents((prev) => ({
+              ...prev,
+              [match.id]:
+                match.work_description || "Partner has submitted their work.",
+            }));
+          } else {
+            setPartnerWorkContents((prev) => ({
+              ...prev,
+              [match.id]: "Partner hasn't submitted work yet.",
+            }));
+          }
+        }
+      }
+
       const combinedMatches = matchesData.map((match) => {
         const partnerId =
           match.user1_id === userId ? match.user2_id : match.user1_id;
         const partnerDetails = userDetailsMap.get(partnerId);
-
-        // Initialize work content in state
-        if (match.work_description && !workContents[match.id]) {
-          setWorkContents((prev) => ({
-            ...prev,
-            [match.id]: match.work_description || "",
-          }));
-        }
 
         return {
           id: match.id,
@@ -180,7 +302,19 @@ export default function Dashboard() {
         };
       });
 
-      setMatches(combinedMatches);
+      // Filter matches to show only those where both users have staked
+      const stakedMatches = combinedMatches.filter(
+        (match) => match.stake_status_user1 && match.stake_status_user2
+      );
+
+      // If there are matches but none with both users having staked, redirect to matches page
+      if (stakedMatches.length === 0 && combinedMatches.length > 0) {
+        router.push("/matches");
+        toast.info("Both users need to stake credits to access the dashboard");
+        return;
+      }
+
+      setMatches(stakedMatches);
     } catch (err) {
       console.error("Error fetching matches:", err);
       setError(err instanceof Error ? err.message : "An error occurred");
@@ -196,25 +330,103 @@ export default function Dashboard() {
     }));
   };
 
+  // Reset the work content for user2 if they haven't submitted yet
+  useEffect(() => {
+    if (!isLoading && userId && matches.length > 0) {
+      matches.forEach((match) => {
+        const isUser1 = userId === match.user1_id;
+        const userSubmitted = isUser1
+          ? match.project_submitted_user1
+          : match.project_submitted_user2;
+
+        if (!userSubmitted && !isUser1) {
+          // User2 who hasn't submitted should see empty text box
+          setWorkContents((prev) => ({
+            ...prev,
+            [match.id]: "",
+          }));
+        }
+      });
+    }
+  }, [isLoading, userId, matches]);
+
   const handleSubmitProject = async (matchId: string) => {
     if (!workContents[matchId]?.trim() || !userId) return;
 
     try {
       setSubmittingMatch(matchId);
       const supabase = createClient();
+      const content = workContents[matchId];
+
+      // Get match information
+      const { data: matchData, error: matchError } = await supabase
+        .from("matches")
+        .select("*")
+        .eq("id", matchId)
+        .single();
+
+      if (matchError) {
+        throw matchError;
+      }
+
+      const isUser1 = userId === matchData.user1_id;
+
+      // Store user1's submission in work_description field
+      if (isUser1) {
+        const { error: updateError } = await supabase
+          .from("matches")
+          .update({
+            work_description: content,
+            project_submitted_user1: true,
+          })
+          .eq("id", matchId);
+
+        if (updateError) {
+          throw updateError;
+        }
+      } else {
+        // For user2, just update submission status
+        const { error: updateError } = await supabase
+          .from("matches")
+          .update({
+            project_submitted_user2: true,
+          })
+          .eq("id", matchId);
+
+        if (updateError) {
+          throw updateError;
+        }
+
+        // Store user2's submission in a separate table or in messages
+        const { error: storeError } = await supabase.from("messages").insert({
+          match_id: matchId,
+          sender_id: userId,
+          message: content,
+          timestamp: new Date().toISOString(),
+          message_type: "submission",
+        });
+
+        if (storeError) {
+          console.error("Failed to store user2 submission:", storeError);
+        }
+      }
 
       // Call the submit_project function
       const { data, error } = await supabase.rpc("submit_project", {
         p_match_id: matchId,
         p_user_id: userId,
-        p_submission_content: workContents[matchId],
+        p_submission_content: content,
       });
 
-      const { data: matchData, error: matchError } = await supabase
+      const { data: matchStake, error: matchStakeError } = await supabase
         .from("matches")
         .select("stake_amount")
         .eq("id", matchId)
         .single();
+
+      if (matchStakeError) {
+        throw matchStakeError;
+      }
 
       const { data: userCredits, error: userCreditsError } = await supabase
         .from("users")
@@ -227,7 +439,7 @@ export default function Dashboard() {
       }
 
       const userNewCredits =
-        userCredits.credits + (matchData?.stake_amount - 1);
+        userCredits.credits + (matchStake?.stake_amount - 1);
 
       const { error: updateCreditsError } = await supabase
         .from("users")
@@ -237,6 +449,12 @@ export default function Dashboard() {
       if (error) {
         throw error;
       }
+
+      // Update local state with the submitted content
+      setWorkContents((prev) => ({
+        ...prev,
+        [matchId]: content,
+      }));
 
       toast.success("Project submitted successfully!");
       fetchMatches();
@@ -649,8 +867,7 @@ export default function Dashboard() {
                             </h3>
                             <p className="text-sm text-green-700">
                               Both parties have completed this project. Your
-                              staked credits have been refunded to your account
-                              and you received 10 extra credits as a reward.
+                              staked credits have been refunded to your account.
                             </p>
                           </div>
                         )}
@@ -679,6 +896,15 @@ export default function Dashboard() {
                               or include any other information needed to
                               showcase your completed project.
                             </p>
+
+                            <div className="flex items-center mb-2">
+                              <div className="w-7 h-7 rounded-full bg-[#2A0EFF]/10 flex items-center justify-center">
+                                <User className="h-4 w-4 text-[#2A0EFF]" />
+                              </div>
+                              <span className="ml-2 text-sm font-medium text-gray-700">
+                                You
+                              </span>
+                            </div>
 
                             <Textarea
                               placeholder="Describe your work or provide links to your project files..."
@@ -717,11 +943,27 @@ export default function Dashboard() {
                         ) : (
                           <>
                             <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4 overflow-auto max-h-60">
+                              <div className="flex items-center mb-2">
+                                <div className="w-7 h-7 rounded-full bg-[#2A0EFF]/10 flex items-center justify-center">
+                                  <User className="h-4 w-4 text-[#2A0EFF]" />
+                                </div>
+                                <span className="ml-2 text-sm font-medium text-gray-700">
+                                  You
+                                </span>
+                              </div>
                               <p className="whitespace-pre-wrap text-gray-700">
-                                {workContents[match.id] ||
-                                  match.work_description ||
-                                  ""}
+                                {workContents[match.id] || ""}
                               </p>
+                              {workContents[match.id] &&
+                                workContents[match.id].includes(
+                                  "tracked separately"
+                                ) && (
+                                  <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-800">
+                                    Note: Your submission was recorded
+                                    successfully but can't be displayed here due
+                                    to how data is stored.
+                                  </div>
+                                )}
                             </div>
 
                             <div className="text-right">
@@ -729,6 +971,45 @@ export default function Dashboard() {
                                 Submitted on {new Date().toLocaleDateString()}
                               </p>
                             </div>
+
+                            {partnerSubmitted && (
+                              <div className="mt-6">
+                                <h4 className="text-md font-semibold text-gray-700 mb-3">
+                                  Partner's Submission
+                                </h4>
+                                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-2 overflow-auto max-h-60">
+                                  <div className="flex items-center mb-2">
+                                    <div className="w-7 h-7 rounded-full bg-[#2A0EFF]/10 flex items-center justify-center">
+                                      <User className="h-4 w-4 text-[#2A0EFF]" />
+                                    </div>
+                                    <span className="ml-2 text-sm font-medium text-gray-700">
+                                      {match.partner_name}
+                                    </span>
+                                  </div>
+                                  <p className="whitespace-pre-wrap text-gray-700">
+                                    {partnerWorkContents[match.id] ||
+                                      "No submission content available"}
+                                  </p>
+
+                                  {partnerWorkContents[match.id] &&
+                                    (partnerWorkContents[match.id].includes(
+                                      "unavailable"
+                                    ) ||
+                                      partnerWorkContents[match.id].includes(
+                                        "hasn't"
+                                      )) && (
+                                      <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                                        <p className="text-sm text-blue-700">
+                                          <strong>Note:</strong> Both you and
+                                          your partner can see each other's
+                                          submissions, ensuring transparency in
+                                          the collaboration process.
+                                        </p>
+                                      </div>
+                                    )}
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
                       </div>

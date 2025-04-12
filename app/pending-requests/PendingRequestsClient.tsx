@@ -54,7 +54,8 @@ export default function PendingRequestsClient({
       setLoading(true);
       const supabase = createClient();
 
-      const { data: authData, error: authError } = await supabase.auth.getUser();
+      const { data: authData, error: authError } =
+        await supabase.auth.getUser();
 
       if (authError) {
         throw new Error("Authentication failed");
@@ -159,9 +160,7 @@ export default function PendingRequestsClient({
   }
 
   return (
-    <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-white">Pending Requests</h1>
-
+    <div>
       {requests.length === 0 ? (
         <p className="text-gray-500">No pending requests at the moment.</p>
       ) : (
@@ -169,11 +168,13 @@ export default function PendingRequestsClient({
           {requests.map((request) => (
             <div
               key={request.id}
-              className="border p-4 bg-white rounded-md shadow-lg shadow-[#2A0EFF]/10 flex justify-between items-center"
+              className="border p-4 bg-[#dedede] rounded-md shadow-lg shadow-[#242FFF]/10 flex justify-between items-center"
             >
               <div>
-                <p className="font-medium text-[#2A0EFF]">To: {request.receiver_email}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-[#242FFF]">
+                  To: {request.receiver_email}
+                </p>
+                <p className="text-sm text-black">
                   Status:{" "}
                   {request.status === "accepted" ? "Accepted" : "Pending"}
                 </p>
@@ -182,12 +183,12 @@ export default function PendingRequestsClient({
               {request.status === "accepted" && request.match_id ? (
                 <button
                   onClick={() => navigateToChat(request.match_id!)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors"
                 >
                   Chat
                 </button>
               ) : (
-                <span className="px-4 py-2 rounded bg-yellow-100 text-yellow-800">
+                <span className="px-4 py-2 rounded-full bg-yellow-100 text-yellow-800 text-sm">
                   Waiting for response
                 </span>
               )}

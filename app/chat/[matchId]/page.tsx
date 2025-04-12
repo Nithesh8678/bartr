@@ -5,7 +5,14 @@ import { useParams, useRouter } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Send, ArrowLeft, ChevronRight } from "lucide-react";
+import {
+  Loader2,
+  Send,
+  ArrowLeft,
+  ChevronRight,
+  Paperclip,
+  File,
+} from "lucide-react";
 import { User } from "@supabase/supabase-js"; // Import User type
 import Link from "next/link";
 import { Toaster } from "sonner"; // Import Toaster for potential error messages
@@ -17,6 +24,8 @@ interface Message {
   sender_id: string;
   message: string;
   timestamp: string;
+  file_url?: string;
+  file_name?: string;
 }
 
 // Define structure for the other user in the chat
@@ -53,6 +62,10 @@ export default function ChatPage() {
   const [isSending, setIsSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement | null>(null); // Ref for scrolling
+  const sentMessageIds = useRef<Set<string>>(new Set()); // Track sent message IDs
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -158,7 +171,17 @@ export default function ChatPage() {
             (payload) => {
               console.log("New message received via subscription:", payload);
               const newMessageReceived = payload.new as Message;
-              // Add message only if it doesn't already exist (prevents duplicates on send)
+
+              // Skip if this is a message we just sent (tracked in sentMessageIds)
+              if (sentMessageIds.current.has(newMessageReceived.id)) {
+                console.log(
+                  "Skipping already displayed message:",
+                  newMessageReceived.id
+                );
+                return;
+              }
+
+              // Add message only if it doesn't already exist (prevents duplicates)
               setMessages((currentMessages) => {
                 if (
                   !currentMessages.some(
@@ -249,43 +272,115 @@ export default function ChatPage() {
     }
 
     setIsSending(true);
+    setNewMessage(""); // Clear input immediately to prevent double-sends
 
     try {
-      // Add local timestamp, will be replaced with server timestamp
-      const tempTimestamp = new Date().toISOString();
-      const tempMessageId = `temp-${Date.now()}`;
+      const currentTime = new Date().toISOString(); // Get current client time
 
-      // Optimistically add message to UI
-      const optimisticMessage: Message = {
-        id: tempMessageId,
-        match_id: matchId,
-        sender_id: currentUser.id,
-        message: messageContent,
-        timestamp: tempTimestamp,
-      };
-
-      setMessages((prev) => [...prev, optimisticMessage]);
-      setNewMessage(""); // Clear input field
-
-      // Send message to database
-      const { data, error } = await supabase.from("messages").insert([
-        {
-          match_id: matchId,
-          sender_id: currentUser.id,
-          message: messageContent,
-        },
-      ]);
+      // Send message to database with current time
+      const { data, error } = await supabase
+        .from("messages")
+        .insert([
+          {
+            match_id: matchId,
+            sender_id: currentUser.id,
+            message: messageContent,
+            timestamp: currentTime, // Use current time instead of server time
+          },
+        ])
+        .select();
 
       if (error) {
         throw new Error(`Failed to send message: ${error.message}`);
       }
 
-      console.log("Message sent successfully");
+      // We'll let the subscription handle adding the message to the UI
+      // Just track the ID to prevent duplication
+      if (data && data.length > 0) {
+        sentMessageIds.current.add(data[0].id);
+      }
+
+      console.log("Message sent successfully", data);
     } catch (err) {
       console.error("Error sending message:", err);
       setError(err instanceof Error ? err.message : "Failed to send message");
     } finally {
       setIsSending(false);
+      scrollToBottom();
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
+
+  const handleFileUpload = async () => {
+    if (!selectedFile || !currentUser || !matchId || isUploading) {
+      return;
+    }
+
+    setIsUploading(true);
+
+    try {
+      // Upload the file to storage
+      const fileName = `${Date.now()}_${selectedFile.name}`;
+      const filePath = `files/${matchId}/${fileName}`;
+
+      // Upload to Supabase storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("chat-files")
+        .upload(filePath, selectedFile);
+
+      if (uploadError) {
+        throw new Error(`Failed to upload file: ${uploadError.message}`);
+      }
+
+      // Get a public URL for the file
+      const { data: urlData } = await supabase.storage
+        .from("chat-files")
+        .getPublicUrl(filePath);
+
+      if (!urlData || !urlData.publicUrl) {
+        throw new Error("Failed to get file URL");
+      }
+
+      // Save message with file reference
+      const currentTime = new Date().toISOString();
+      const { data, error } = await supabase
+        .from("messages")
+        .insert([
+          {
+            match_id: matchId,
+            sender_id: currentUser.id,
+            message: `Sent a file: ${selectedFile.name}`,
+            timestamp: currentTime,
+            file_url: urlData.publicUrl,
+            file_name: selectedFile.name,
+          },
+        ])
+        .select();
+
+      if (error) {
+        throw new Error(`Failed to save file message: ${error.message}`);
+      }
+
+      // Track the ID to prevent duplication
+      if (data && data.length > 0) {
+        sentMessageIds.current.add(data[0].id);
+      }
+
+      console.log("File uploaded successfully", data);
+      setSelectedFile(null);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    } catch (err) {
+      console.error("Error uploading file:", err);
+      setError(err instanceof Error ? err.message : "Failed to upload file");
+    } finally {
+      setIsUploading(false);
       scrollToBottom();
     }
   };
@@ -339,7 +434,7 @@ export default function ChatPage() {
   const isChatEnabled = matchData.is_chat_enabled;
 
   return (
-    <div className="max-w-4xl mx-auto p-4 mt-12">
+    <div className="max-w-4xl mx-auto p-4 pt-20">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center">
           <Link
@@ -404,6 +499,24 @@ export default function ChatPage() {
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
+                        <p className="text-xs font-semibold mb-1">
+                          {isCurrentUser ? "You" : chatPartner?.name}
+                        </p>
+                        {message.file_url ? (
+                          <div className="mb-2">
+                            <a
+                              href={message.file_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center gap-2 hover:underline"
+                            >
+                              <File className="h-4 w-4" />
+                              <span className="text-sm overflow-hidden text-ellipsis">
+                                {message.file_name || "File"}
+                              </span>
+                            </a>
+                          </div>
+                        ) : null}
                         <p>{message.message}</p>
                         <p
                           className={`text-xs mt-1 ${
@@ -413,6 +526,7 @@ export default function ChatPage() {
                           {new Date(message.timestamp).toLocaleString([], {
                             hour: "2-digit",
                             minute: "2-digit",
+                            hour12: true,
                           })}
                         </p>
                       </div>
@@ -435,11 +549,43 @@ export default function ChatPage() {
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               className="flex-grow"
-              disabled={isSending}
+              disabled={isSending || isUploading}
+            />
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+              id="file-upload"
             />
             <Button
+              type="button"
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3"
+              disabled={isUploading || isSending}
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
+            {selectedFile && (
+              <Button
+                type="button"
+                onClick={handleFileUpload}
+                disabled={isUploading}
+                className={`px-3 ${isUploading ? "opacity-70" : ""}`}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <span className="text-xs truncate max-w-[100px]">
+                    {selectedFile.name}
+                  </span>
+                )}
+              </Button>
+            )}
+            <Button
               type="submit"
-              disabled={!newMessage.trim() || isSending}
+              disabled={!newMessage.trim() || isSending || isUploading}
               className={isSending ? "opacity-70" : ""}
             >
               {isSending ? (

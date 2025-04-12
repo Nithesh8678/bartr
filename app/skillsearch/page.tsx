@@ -5,6 +5,18 @@ import { useRouter } from "next/navigation";
 import SkillsInput from "@/app/components/SkillsInput";
 import { toast } from "sonner";
 
+// Popular skills array
+const popularSkills = [
+  "Web Development",
+  "Graphic Design",
+  "Content Writing",
+  "Data Analysis",
+  "Marketing",
+  "Translation",
+  "Video Editing",
+  "UI/UX Design",
+];
+
 export default function SkillSearchPage() {
   const [skillsNeeded, setSkillsNeeded] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,30 +65,44 @@ export default function SkillSearchPage() {
     }
   };
 
+  // Add a popular skill to the skillsNeeded array
+  const addPopularSkill = (skill: string) => {
+    if (!skillsNeeded.includes(skill)) {
+      setSkillsNeeded([...skillsNeeded, skill]);
+      toast.success(`Added "${skill}" to your search`);
+    } else {
+      toast.info(`"${skill}" is already in your search`);
+    }
+  };
+
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold">Bartr Skill Search</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-gray-300">Find your perfect match</span>
-        </div>
+    <div className="flex flex-col h-screen bg-white">
+      {/* Header Section with Solid Blue */}
+      <div className="relative w-full h-[410px] bg-[#242FFF]">
+        <div
+          className="absolute inset-0 bg-grid-white/10"
+          style={{
+            backgroundSize: "10px 10px",
+            backgroundImage:
+              "linear-gradient(to right,rgba(255,255,255,0.1) 1px,transparent 1px), linear-gradient(to bottom,rgba(255,255,255,0.1) 1px,transparent 1px)",
+          }}
+        />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex justify-center items-center">
-        <div className="w-full max-w-2xl bg-gray-800 rounded-xl p-8 shadow-lg">
+      {/* Main Content with Search Bar - Move to top */}
+      <div className="container mx-auto px-4 -mt-60 relative z-10">
+        <div className="bg-white rounded-xl p-8 shadow-lg mb-8">
           <div className="space-y-6">
-            <h2 className="text-2xl font-semibold text-center">
-              Search Your Needed Skill
+            <h2 className="text-2xl font-semibold text-center text-[#242FFF]">
+              Search for skills
             </h2>
             <div className="space-y-4">
               <SkillsInput
                 label="Skills You Need"
                 skills={skillsNeeded}
                 setSkills={setSkillsNeeded}
-                backgroundColor="bg-secondary/10"
-                textColor="text-secondary"
+                backgroundColor="bg-[#242FFF]/10"
+                textColor="text-[#242FFF]"
               />
 
               {errorDetails && (
@@ -87,13 +113,33 @@ export default function SkillSearchPage() {
               )}
 
               <button
-                className="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg transition-colors text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-[#242FFF] hover:bg-[#1A0EDF] py-3 rounded-lg transition-colors text-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed text-white"
                 onClick={handleSearch}
                 disabled={isLoading || skillsNeeded.length === 0}
               >
                 {isLoading ? "Searching..." : "Search Skills"}
               </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Popular Choices Section - Move below the search bar */}
+      <div className="container mx-auto px-4 mb-12 relative z-10">
+        <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl shadow-lg">
+          <h3 className="text-xl font-semibold text-[#242FFF] mb-4">
+            Popular Choices
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {popularSkills.map((skill) => (
+              <button
+                key={skill}
+                onClick={() => addPopularSkill(skill)}
+                className="px-4 py-2 bg-[#242FFF]/10 hover:bg-[#242FFF]/20 text-[#242FFF] rounded-full transition-colors font-medium text-sm"
+              >
+                {skill}
+              </button>
+            ))}
           </div>
         </div>
       </div>

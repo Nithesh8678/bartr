@@ -226,21 +226,21 @@ export default function IncomingRequestsClient({
   }
 
   return (
-    <div className="container mx-auto pt-20 px-4 bg-[#2A0EFF] h-screen">
-      <h1 className="text-2xl font-bold mb-6 text-white">Incoming Requests</h1>
-
+    <div>
       {requests.length === 0 ? (
-        <p className="text-gray-500">No pending requests at the moment.</p>
+        <p className="text-gray-500">No incoming requests at the moment.</p>
       ) : (
         <div className="space-y-4">
           {requests.map((request) => (
             <div
               key={request.id}
-              className="border p-4 bg-white rounded-md shadow-lg shadow-[#2A0EFF]/10 flex justify-between items-center"
+              className="border p-4 bg-[#dedede] rounded-md shadow-lg shadow-[#242FFF]/10 flex justify-between items-center"
             >
               <div>
-                <p className="font-medium text-[#2A0EFF]">From: {request.sender_email}</p>
-                <p className="text-sm text-gray-500">
+                <p className="font-medium text-[#242FFF]">
+                  From: {request.sender_email}
+                </p>
+                <p className="text-sm text-black">
                   Status:{" "}
                   {request.status === "accepted" ? "Accepted" : "Pending"}
                 </p>
@@ -249,7 +249,7 @@ export default function IncomingRequestsClient({
               {request.status === "accepted" && request.match_id ? (
                 <button
                   onClick={() => navigateToChat(request.match_id!)}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded"
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full transition-colors"
                 >
                   Chat
                 </button>
@@ -262,7 +262,7 @@ export default function IncomingRequestsClient({
                       request.receiver_id
                     )
                   }
-                  className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
+                  className="px-4 py-2 bg-[#242FFF]/10 hover:bg-[#242FFF]/20 text-[#242FFF] rounded-full transition-colors font-medium text-sm"
                 >
                   Accept
                 </button>
